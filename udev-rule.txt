@@ -1,0 +1,7 @@
+/etc/udev/rules.d/99-ptouch.rules
+
+SUBSYSTEMS=="usb", ENV{DEVTYPE}=="usb_device", ATTRS{idVendor}=="0x04f9", ATTRS{idProduct}=="0x2062", GROUP="plugdev", MODE="0777"
+
+OR
+
+SUBSYSTEMS=="usb", ENV{DEVTYPE}=="usb_device", ATTRS{idVendor}=="04f9", GROUP="plugdev", MODE="0666"
