@@ -1,3 +1,4 @@
+import logging
 import time
 from typing import List, Optional
 import usb.core
@@ -6,6 +7,8 @@ from PIL.Image import Image
 from ptouch_py import const
 from ptouch_py.domain import DevInfo, PTStatusRaw, PTStatus
 from ptouch_py.registry import SUPPORTED_DEVICES
+
+LOGGER = logging.getLogger("ptouch_py.core")
 
 
 class Printer(object):
@@ -35,7 +38,6 @@ class Printer(object):
             raise RuntimeError("Device must be initialized before use. Invoke Printer.init() method.")
 
         msg_len = len(data)
-        # print("PT Send: " + data.hex())
         assert self.usb_dev.write(0x02, data) == msg_len
 
     def init(self):
@@ -46,10 +48,8 @@ class Printer(object):
         intf = cfg[(0, 0)]
         endpoint: usb.core.Endpoint = usb.util.find_descriptor(
             intf,
-            custom_match= \
-                lambda e: \
-                    usb.util.endpoint_direction(e.bEndpointAddress) == \
-                    usb.util.ENDPOINT_OUT)
+            custom_match=lambda e: usb.util.endpoint_direction(e.bEndpointAddress) == usb.util.ENDPOINT_OUT
+        )
         assert endpoint is not None and endpoint.bEndpointAddress == const.PTOUCH_ENDPOINT
         self._pt_send(const.CMD_INIT)
         self.__initialized = True

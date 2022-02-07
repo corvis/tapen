@@ -1,2 +1,9 @@
+# PTouch
 pyusb==1.2.1
 Pillow==9.0.1
+
+# Tapen
+cli-rack[validation]~=1.0.1
+weasyprint==54.1
+pyyaml>=5.0.0
+appdirs>=1.4.4
