@@ -43,7 +43,21 @@ def read_config(p: Path, allow_create=True) -> Dict[str, Any]:
         with open(p, "r") as f:
             yaml_dict = yaml.load(f, Loader=yaml.FullLoader)
         validated_config = CONFIG_SCHEMA(yaml_dict)
-    return validated_config
+    return __normalize_config(validated_config)
+
+
+def __normalize_config(conf: Dict[str, Any]) -> Dict[str, Any]:
+    # Libraries: Standardize representation (convert to dict form)
+    libraries = conf.get(const.CONF_LIBRARIES)
+    if isinstance(libraries, list):
+        mapped = {}
+        for x in libraries:
+            if isinstance(x, str):
+                mapped[x] = x
+            else:
+                mapped[x[const.CONF_NAME]] = x[const.CONF_URL]
+        conf[const.CONF_LIBRARIES] = mapped
+    return conf
 
 
 def write_config_file(config: Dict[str, Any], p: Path):
@@ -63,7 +77,7 @@ def load_config(location_override: Optional[str] = None, allow_create=True) -> D
         if x.exists():
             location = x
             break
-    read_config(location, allow_create)
+    return read_config(location, allow_create)
 
 
 app_dirs = AppDirs("tapen")

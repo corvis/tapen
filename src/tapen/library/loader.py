@@ -8,7 +8,7 @@ from cli_rack.loader import BaseLoader, BaseLocatorDef, LoaderRegistry, LoadedDa
 class LibraryLocatorDef(BaseLocatorDef):
     PREFIX = ''
     TYPE = 'lib'
-    PATH_SEPARATOR = '/'
+    PATH_SEPARATOR = ':'
 
     def __init__(
             self, repo_name: str, path: str, name: Optional[str] = None, original_locator: Optional[str] = None

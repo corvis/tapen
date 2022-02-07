@@ -8,8 +8,9 @@ import appdirs
 from cli_rack import CLI, ansi
 from cli_rack.modular import CliAppManager, CliExtension, GlobalArgsExtension
 
-from tapen import config
+from tapen import config, const
 from tapen.__version__ import __version__ as VERSION
+from tapen.library import TemplateLibrary
 
 LOGGER = logging.getLogger("cli")
 
@@ -49,6 +50,9 @@ class ImportLibExtension(BaseCliExtension):
 
     def handle(self, args: argparse.Namespace):
         config = self.load_config(args)
+        template_library = TemplateLibrary(config.get(const.CONF_LIBRARIES))
+        template_library.fetch_libraries()
+        template_library.load("jb:template1")
 
 
 def main(argv: List[str]):
