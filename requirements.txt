@@ -4,6 +4,7 @@ Pillow==9.0.1
 
 # Tapen
 cli-rack[validation]~=1.0.1
-weasyprint==54.1
+weasyprint==52.5
 pyyaml>=5.0.0
 appdirs>=1.4.4
+jinja2>=3.0.0

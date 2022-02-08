@@ -1,3 +1,4 @@
+import datetime
 import os
 from pathlib import Path
 from typing import Any, Dict, List
@@ -5,8 +6,31 @@ from typing import Any, Dict, List
 from cli_rack.loader import DefaultLoaderRegistry, LoadedDataMeta, InvalidPackageStructure, LoaderRegistry
 from cli_rack.utils import ensure_dir
 
-from tapen import config
+from tapen import config, const, validate
+from tapen.common.domain import Template
 from tapen.library.loader import LibraryLoader
+from tapen.utils import yaml_file_to_dict
+from cli_rack_validation import crv
+
+MANIFEST_FILE_NAME = 'manifest.yaml'
+
+MANIFEST_META_SCHEMA = crv.Schema({
+    crv.Optional(const.MF_NAME): crv.string,
+    crv.Optional(const.MF_DESCRIPTION): crv.string,
+    crv.Optional(const.MF_AUTHOR): crv.ensure_email_dict,
+    crv.Optional(const.MF_LICENSE): crv.string,
+})
+
+MANIFEST_LAYOUT_SCHEMA = crv.Schema({
+    crv.Required(const.MF_TEMPLATE): crv.string_strict,
+    crv.Optional(const.MF_CSS): crv.string,
+})
+
+MANIFEST_SCHEMA = crv.Schema({
+    crv.Required(const.MF_META_SECTION, default={}): MANIFEST_META_SCHEMA,
+    crv.Required(const.MF_PARAMS, default={}): validate.valid_object_def,
+    crv.Required(const.MF_LAYOUT): MANIFEST_LAYOUT_SCHEMA,
+})
 
 
 class TemplateLibrary(object):
@@ -15,6 +39,9 @@ class TemplateLibrary(object):
         self.lib_loader = DefaultLoaderRegistry.clone()
         self.lib_loader.target_dir = Path(config.app_dirs.user_data_dir) / "lib-cache"
         self.lib_root_dirs: List[str] = [""]
+        local_loader = self.lib_loader.get_for_locator("local:nothing")
+        if local_loader:
+            local_loader.reload_interval = datetime.timedelta(seconds=0)  # force reload for local repo
         self.loader = DefaultLoaderRegistry.clone()
         self.loader.target_dir = Path(config.app_dirs.user_data_dir) / "lib-cache"
         ensure_dir(str(self.loader.target_dir))
@@ -34,5 +61,15 @@ class TemplateLibrary(object):
         for name, url in self.__lib_config.items():
             self.libraries[name] = self.lib_loader.load(url, self._lib_dir_resolver)
 
-    def load(self, locator: str):
-        self.loader.load(locator)
+    def load_template(self, locator: str) -> Template:
+        meta = self.loader.load(locator)
+        template_dir = Path(meta.path) / meta.target_path
+        manifest_file = (template_dir / MANIFEST_FILE_NAME)
+        if not manifest_file.is_file():
+            raise ValueError(
+                "Missing manifest file for template {}. Check your template library and ensure it has valid structure."
+                "\n\tCache location: {}".format(
+                    locator, meta.path))
+        manifest_dict = yaml_file_to_dict(manifest_file)
+        manifest_dict = MANIFEST_SCHEMA(manifest_dict)
+        return Template(meta.target_path, manifest_dict)

@@ -5,12 +5,16 @@ import sys
 from typing import List, Dict, Any
 
 import appdirs
+from PIL import Image
 from cli_rack import CLI, ansi
 from cli_rack.modular import CliAppManager, CliExtension, GlobalArgsExtension
 
+from ptouch_py.core import get_first_printer
 from tapen import config, const
 from tapen.__version__ import __version__ as VERSION
+from tapen.common.domain import PrintJob, TapeParams
 from tapen.library import TemplateLibrary
+from tapen.renderer import get_default_renderer
 
 LOGGER = logging.getLogger("cli")
 
@@ -52,7 +56,24 @@ class ImportLibExtension(BaseCliExtension):
         config = self.load_config(args)
         template_library = TemplateLibrary(config.get(const.CONF_LIBRARIES))
         template_library.fetch_libraries()
-        template_library.load("jb:template1")
+        template = template_library.load_template("jb:template1")
+
+        print_job = PrintJob(template, dict(default="test"))
+        renderer = get_default_renderer()
+        bitmap = renderer.render_bitmap(print_job, TapeParams())
+        bitmap.save("out-bitmap.bmp")
+        printer = get_first_printer()
+        if printer:
+            print("Found printer: " + str(printer))
+        else:
+            print("Device is not detected")
+            return
+        printer.init()
+        # status = printer.get_status()
+        # print("Detected tape: {}mm {} on {}".format(status.tape_width, status.text_color, status.tape_color))
+        printer.print_image(bitmap)
+
+
 
 
 def main(argv: List[str]):

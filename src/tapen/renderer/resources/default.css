@@ -1,0 +1,32 @@
+html {
+    display: block;
+    height: 100%;
+    width: 100%;
+    padding: 0;
+    margin: 0;
+}
+
+body {
+    background: white;
+    page: tape;
+    margin: 0;
+    height: 100%;
+    float: left;
+    color: black;
+    font-family: "Helvetica Neue", Verdana, sans-serif;
+    box-sizing: border-box;
+}
+
+.label {
+    padding: 0;
+    margin: 0;
+    display: block;
+    width: 100%;
+    height: 100%;
+    margin-top: -5px;
+}
+
+p {
+    padding: 0;
+    margin: 0;
+}

@@ -1,0 +1,19 @@
+template:
+  name: My template
+  description: some description
+  author: name <adsad@sadasd.com>
+  license: cc-0
+
+params:
+  default:
+    required: true
+    validator: string
+
+layout:
+  template: |
+    <p><strong>M</strong>:&nbsp;{{param.default}}</p>
+  css: |
+    body {
+      padding: 0 1mm;
+    }
+    p.test { color: red; }
