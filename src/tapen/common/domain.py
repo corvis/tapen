@@ -31,9 +31,20 @@ class PrintJob(object):
 class TapeParams(object):
 
     @property
-    def tape_width_mm(self) -> float:
+    def width_mm(self) -> float:
         raise NotImplementedError
 
     @property
-    def tape_width_px(self) -> int:
+    def width_px(self) -> int:
+        raise NotImplementedError
+
+    @property
+    def id(self) -> int:
+        raise NotImplementedError
+
+    @property
+    def name(self) -> str:
+        raise NotImplementedError
+
+    def vertical_padding_mm(self) -> float:
         raise NotImplementedError

@@ -6,6 +6,24 @@
         @page tape {
             size: 6mm 2000mm
         }
+        body {
+            border: 1px solid red;
+        }
+        .label {
+            border: 1px solid green;
+        }
+        html {
+            height: 42px !important;
+        }
+        /**
+        DYNAMICALLY GENERATED
+        */
+        body {
+            line-height: 32px;
+            font-size: 32px;
+            padding: 5px 0;
+        }
+        /** REGULAR CONTENT */
         html {
             display: block;
             height: 100%;
@@ -22,11 +40,23 @@
             float: left;
             color: black;
             font-family: "Helvetica Neue", Verdana, sans-serif;
+            box-sizing: border-box;
+            border: 0;
+        }
+        .label {
+            padding: 0;
+            margin: 0;
+            display: block;
+            width: 100%;
+            height: 100%;
+            box-sizing: border-box;
+            border: 0;
         }
 
         p {
             padding: 0;
             margin: 0;
+            border: 0;
         }
     </style>
 </head>

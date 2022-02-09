@@ -1,15 +1,15 @@
 import ctypes
 import enum
-from cgitb import reset
-from typing import NamedTuple, List
-
-from cli_rack.utils import safe_cast
+from typing import NamedTuple, List, Dict
 
 
 class TapeInfo(NamedTuple):
-    width_mm: int
+    tape_size: str
+    designated_size: int
+    tape_id: int
+    width_mm: float
     width_px: int
-    default_margins_mm: float
+    padding_vertical_mm: float
 
 
 class DevInfo(object):
@@ -95,7 +95,7 @@ class BaseColorEnum(enum.Enum):
     def get_by_code(cls, code: int):
         result = next(filter(lambda x: x[1].value == code, cls.__members__.items()), None)
         if result is not None:
-            return result
+            return result[1]
         raise KeyError("Invalid value for enum {}: {}".format(cls.__name__, code))
 
 
@@ -113,7 +113,7 @@ class TapeTextColor(BaseColorEnum):
 
     @classmethod
     def get_by_code(cls, code: int) -> 'TapeTextColor':
-        return super().get_by_code(code)        # type: ignore
+        return super().get_by_code(code)  # type: ignore
 
 
 class TapeColor(BaseColorEnum):
@@ -132,6 +132,10 @@ class TapeColor(BaseColorEnum):
     SATIN_GOLD = 0x23, "Golden (satin)", "gold"
     SATIN_SILVER = 0x24, "Silver (satin)", "silver"
     # TODO: extend the list with the rest of items
+    BLUE_F = 0x62, "Blue (F)", "blue"
+    WHITE_TUBE = 0x70, "White (tube)", "white"
+    WHITE_FLEX_ID = 0x90, "White (flex id)", "white"
+    YELLOW_FLEX_ID = 0x91, "Yellow (flex id)", "yellow"
     CLEARNING = 0xF0, "Clearning", "transparent"
     STENCIL = 0xF1, "Stencil", "grey"
     INCOMPATIBLE = 0xFF, "Incompatible", "grey"
@@ -142,15 +146,15 @@ class TapeColor(BaseColorEnum):
 
 
 _TAPE_PARAMS_180DPI: List[TapeInfo] = [
-    TapeInfo(6, 32, 1.0),
-    TapeInfo(9, 52, 1.0),
-    TapeInfo(12, 76, 1.0),
-    TapeInfo(18, 120, 1.0),
-    TapeInfo(24, 128, 1.0),
-    TapeInfo(36, 192, 1.0),
+    TapeInfo("3.5mm", 3, 263, 3.4, 24, 0),
+    TapeInfo("6mm", 6, 257, 5.9, 42, 0.7),
+    TapeInfo("9mm", 9, 258, 9.0, 64, 0.98),
+    TapeInfo("12mm", 12, 259, 11.9, 84, 0.98),
+    TapeInfo("18mm", 18, 260, 18.1, 128, 1.12),
+    TapeInfo("24mm", 24, 261, 240, 170, 2.96),
 ]
 
-TAPE_PARAMS = {
+TAPE_PARAMS: Dict[int, List[TapeInfo]] = {
     180: _TAPE_PARAMS_180DPI
 }
 

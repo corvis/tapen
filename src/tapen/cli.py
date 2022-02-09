@@ -14,6 +14,7 @@ from tapen import config, const
 from tapen.__version__ import __version__ as VERSION
 from tapen.common.domain import PrintJob, TapeParams
 from tapen.library import TemplateLibrary
+from tapen.printer import get_print_factory
 from tapen.renderer import get_default_renderer
 
 LOGGER = logging.getLogger("cli")
@@ -58,22 +59,22 @@ class ImportLibExtension(BaseCliExtension):
         template_library.fetch_libraries()
         template = template_library.load_template("jb:template1")
 
-        print_job = PrintJob(template, dict(default="test"))
+        print_job = PrintJob(template, dict(default="Hello"))
         renderer = get_default_renderer()
+        renderer.persist_rendered_image_as_file = True
         bitmap = renderer.render_bitmap(print_job, TapeParams())
-        bitmap.save("out-bitmap.bmp")
-        printer = get_first_printer()
+
+        factory = get_print_factory()
+        printer = factory.get_first_printer()
         if printer:
             print("Found printer: " + str(printer))
         else:
             print("Device is not detected")
             return
         printer.init()
-        # status = printer.get_status()
-        # print("Detected tape: {}mm {} on {}".format(status.tape_width, status.text_color, status.tape_color))
-        printer.print_image(bitmap)
-
-
+        status = printer.get_status()
+        print("Detected tape: {}".format(status.tape_info))
+        # printer.print_image(bitmap)
 
 
 def main(argv: List[str]):

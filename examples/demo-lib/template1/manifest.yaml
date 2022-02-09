@@ -13,7 +13,4 @@ layout:
   template: |
     <p><strong>M</strong>:&nbsp;{{param.default}}</p>
   css: |
-    body {
-      padding: 0 1mm;
-    }
     p.test { color: red; }
