@@ -71,7 +71,7 @@ class Printer(object):
                 raise ValueError("Invalid PT status reply. Raw reply: " + str(status_bytes))
             attempt += 1
 
-    def print_image(self, image: Image):
+    def print_image(self, image: Image, cut_tape=True):
         buffer_size = int(self.info.max_px_buffer / 8)
         # Enable pack bits
         if self.info.packbits:
@@ -89,7 +89,7 @@ class Printer(object):
                 if pixel_is_set:
                     self.__rasterline_set_pixel(raster_line, offset + y)
             self.__send_raster(bytes(raster_line))
-        self._pt_send(const.CMD_EJECT)
+        self._pt_send(const.CMD_EJECT if cut_tape else const.CMD_ADVANCE)
 
     def __rasterline_set_pixel(self, rasterline: List[int], pixel_offset: int) -> None:
         size = len(rasterline)

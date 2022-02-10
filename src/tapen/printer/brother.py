@@ -78,8 +78,8 @@ class PTouchPrinter(TapenPrinter):
     def init(self):
         self._ptouch_printer.init()
 
-    def print_image(self, image: Image):
-        self._ptouch_printer.print_image(image)
+    def print_image(self, image: Image, cut_tape=True):
+        self._ptouch_printer.print_image(image, cut_tape)
 
     def get_status(self) -> PTouchPrinterStatus:
         return PTouchPrinterStatus(self._ptouch_printer.get_status())

@@ -73,7 +73,7 @@ class TapenPrinter(abc.ABC):
         raise NotImplementedError
 
     @abc.abstractmethod
-    def print_image(self, image: Image):
+    def print_image(self, image: Image, cut_tape=True):
         raise NotImplementedError
 
     @abc.abstractmethod

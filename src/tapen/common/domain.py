@@ -23,6 +23,7 @@ class Template:
 
 
 class PrintJob(object):
-    def __init__(self, template: Template, params: Dict[str, Any]) -> None:
+    def __init__(self, template: Template, params: Dict[str, Any], cut_tape=True) -> None:
         self.template = template
         self.params = params
+        self.cut_tape = cut_tape
