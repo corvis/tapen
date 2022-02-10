@@ -26,25 +26,3 @@ class PrintJob(object):
     def __init__(self, template: Template, params: Dict[str, Any]) -> None:
         self.template = template
         self.params = params
-
-
-class TapeParams(object):
-
-    @property
-    def width_mm(self) -> float:
-        raise NotImplementedError
-
-    @property
-    def width_px(self) -> int:
-        raise NotImplementedError
-
-    @property
-    def id(self) -> int:
-        raise NotImplementedError
-
-    @property
-    def name(self) -> str:
-        raise NotImplementedError
-
-    def vertical_padding_mm(self) -> float:
-        raise NotImplementedError

@@ -13,6 +13,8 @@ from tapen.utils import yaml_file_to_dict
 from cli_rack_validation import crv
 
 MANIFEST_FILE_NAME = 'manifest.yaml'
+STANDARD_LIB_NAME = "std"
+STANDARD_LIB_PATH = Path(__file__).parent.parent / "resources" / "std-lib"
 
 MANIFEST_META_SCHEMA = crv.Schema({
     crv.Optional(const.MF_NAME): crv.string,
@@ -34,13 +36,13 @@ MANIFEST_SCHEMA = crv.Schema({
 
 
 class TemplateLibrary(object):
-    def __init__(self, library_config: Dict[str, Any]) -> None:
+    def __init__(self, library_config: Dict[str, Any], always_reload_local_libs=False) -> None:
         self.__lib_config: Dict[str, Any] = library_config
         self.lib_loader = DefaultLoaderRegistry.clone()
         self.lib_loader.target_dir = Path(config.app_dirs.user_data_dir) / "lib-cache"
         self.lib_root_dirs: List[str] = [""]
         local_loader = self.lib_loader.get_for_locator("local:nothing")
-        if local_loader:
+        if always_reload_local_libs and local_loader:
             local_loader.reload_interval = datetime.timedelta(seconds=0)  # force reload for local repo
         self.loader = DefaultLoaderRegistry.clone()
         self.loader.target_dir = Path(config.app_dirs.user_data_dir) / "lib-cache"
@@ -58,9 +60,16 @@ class TemplateLibrary(object):
 
     def fetch_libraries(self):
         self.libraries.clear()
+        self.add_library(STANDARD_LIB_NAME, "local:" + str(STANDARD_LIB_PATH))
         for name, url in self.__lib_config.items():
-            self.libraries[name] = self.lib_loader.load(url, self._lib_dir_resolver)
+            self.add_library(name, url)
 
+    def add_library(self, name: str, url: str, force_reload=False):
+        if name not in self.__lib_config:
+            self.__lib_config[name] = url
+        if name not in self.libraries or force_reload:
+            self.libraries[name] = self.lib_loader.load(url, self._lib_dir_resolver)
+        
     def load_template(self, locator: str) -> Template:
         meta = self.loader.load(locator)
         template_dir = Path(meta.path) / meta.target_path

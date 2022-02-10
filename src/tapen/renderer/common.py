@@ -1,7 +1,8 @@
 import abc
 from typing import Any, Dict
 
-from tapen.common.domain import PrintJob, TapeParams, Template
+from tapen.common.domain import PrintJob, Template
+from tapen.printer.common import TapeInfo
 
 
 class TemplateProcessor(abc.ABC):
@@ -16,12 +17,16 @@ class TemplateProcessor(abc.ABC):
 
 class Renderer(abc.ABC):
 
+    def __init__(self) -> None:
+        super().__init__()
+        self.persist_rendered_image_as_file = False
+
     @abc.abstractmethod
-    def render(self, print_job: PrintJob, tape_params: TapeParams):
+    def render(self, print_job: PrintJob, tape_params: TapeInfo):
         pass
 
     @abc.abstractmethod
-    def render_bitmap(self, print_job: PrintJob, tape_params: TapeParams, is_preview=False):
+    def render_bitmap(self, print_job: PrintJob, tape_params: TapeInfo, is_preview=False):
         pass
 
 

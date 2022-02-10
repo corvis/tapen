@@ -7,9 +7,10 @@ import weasyprint as wp
 from PIL import Image
 from cli_rack.utils import ensure_dir
 
-from tapen.common.domain import PrintJob, TapeParams
+from tapen.common.domain import PrintJob
 from .common import Renderer, TemplateProcessor
 from .. import config
+from ..printer.common import TapeInfo
 
 RESOURCES_DIR = Path(__file__).parent / "resources"
 
@@ -50,7 +51,6 @@ class WeasyprintRenderer(Renderer):
     def __init__(self, template_processor: TemplateProcessor) -> None:
         super().__init__()
         self.template_processor = template_processor
-        self.persist_rendered_image_as_file = False
 
 
     def __get_resource_path(self, name: str):
@@ -94,7 +94,7 @@ class WeasyprintRenderer(Renderer):
         except:
             return None
 
-    def __create_processing_context(self, print_job: PrintJob, tape_params: TapeParams, is_preview=False):
+    def __create_processing_context(self, print_job: PrintJob, tape_params: TapeInfo, is_preview=False):
         return dict(
             params=print_job.params,
             param=print_job.params,
@@ -102,7 +102,7 @@ class WeasyprintRenderer(Renderer):
             is_preview=is_preview
         )
 
-    def render(self, print_job: PrintJob, tape_params: TapeParams, is_preview=False, dpi=180):
+    def render(self, print_job: PrintJob, tape_params: TapeInfo, is_preview=False, dpi=180):
         processing_context = self.__create_processing_context(print_job, tape_params, is_preview)
         label_html = self.template_processor.process(print_job.template, processing_context)
 
@@ -137,7 +137,7 @@ class WeasyprintRenderer(Renderer):
                 f.write(result_png.read())
         return result_png
 
-    def render_bitmap(self, print_job: PrintJob, tape_params: TapeParams, is_preview=False, dpi=180):
+    def render_bitmap(self, print_job: PrintJob, tape_params: TapeInfo, is_preview=False, dpi=180):
         png = self.render(print_job, tape_params, is_preview, dpi)
         bitmap = Image.open(png, "r", ("png",)).convert("1", dither=3)
         if self.persist_rendered_image_as_file:

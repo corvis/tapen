@@ -65,9 +65,9 @@ def write_config_file(config: Dict[str, Any], p: Path):
         yaml.dump(config, f)
 
 
-def load_config(location_override: Optional[str] = None, allow_create=True) -> Dict[str, Any]:
+def load_config(location_override: Optional[str] = None, allow_create=True) -> (str, Dict[str, Any]):
     if location_override is not None:
-        return read_config(Path(location_override), allow_create)
+        return location_override, read_config(Path(location_override), allow_create)
     search_locations = [
         Path(DEFAULT_CONFIG_FILE_NAME),
         Path(app_dirs.user_config_dir) / DEFAULT_CONFIG_FILE_NAME
@@ -77,7 +77,7 @@ def load_config(location_override: Optional[str] = None, allow_create=True) -> D
         if x.exists():
             location = x
             break
-    return read_config(location, allow_create)
+    return location, read_config(location, allow_create)
 
 
 app_dirs = AppDirs("tapen")

@@ -2,20 +2,22 @@ import abc
 import argparse
 import logging
 import sys
-from typing import List, Dict, Any
+from pathlib import Path
+from typing import List, Dict, Any, Optional
 
 import appdirs
 from PIL import Image
 from cli_rack import CLI, ansi
 from cli_rack.modular import CliAppManager, CliExtension, GlobalArgsExtension
+from cli_rack.utils import none_throws
 
 from ptouch_py.core import get_first_printer
 from tapen import config, const
 from tapen.__version__ import __version__ as VERSION
-from tapen.common.domain import PrintJob, TapeParams
+from tapen.common.domain import PrintJob
 from tapen.library import TemplateLibrary
-from tapen.printer import get_print_factory
-from tapen.renderer import get_default_renderer
+from tapen.printer import get_print_factory, PrinterFactory, TapenPrinter
+from tapen.renderer import get_default_renderer, Renderer
 
 LOGGER = logging.getLogger("cli")
 
@@ -38,9 +40,52 @@ class TapenAppManager(CliAppManager):
 
 class BaseCliExtension(CliExtension, metaclass=abc.ABCMeta):
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.__template_library: Optional[TemplateLibrary] = None
+        self.__config: Optional[Dict[str, Any]] = None
+        self.__config_location: Optional[str] = None
+        self.__renderer: Optional[Renderer] = None
+        self.__printer_factory: Optional[PrinterFactory] = None
+        self.__libs_fetched = False
+
     @classmethod
-    def load_config(cls, args: argparse.Namespace) -> Dict[str, Any]:
+    def load_config(cls, args: argparse.Namespace) -> (str, Dict[str, Any]):
         return config.load_config(args.config, True)
+
+    def persist_config(self):
+        config.write_config_file(self.config, Path(none_throws(self.__config_location)))
+
+    @property
+    def config(self) -> Dict[str, Any]:
+        assert self.__config is not None, "Class is not initialized. Forgot self.init()?"
+        return self.__config
+
+    def init(self, args: argparse.Namespace):
+        self.__config_location, self.__config = self.load_config(args)
+        self.__renderer = get_default_renderer()
+        if args.debug:
+            self.__renderer.persist_rendered_image_as_file = True
+        self.__printer_factory = get_print_factory()
+        self.__template_library = TemplateLibrary(self.config.get(const.CONF_LIBRARIES),
+                                                  always_reload_local_libs=args.debug)
+
+    @property
+    def template_library(self) -> TemplateLibrary:
+        assert self.__printer_factory is not None, "Class is not initialized. Forgot self.init()?"
+        if not self.__libs_fetched:
+            self.__template_library.fetch_libraries()
+        return self.__template_library
+
+    @property
+    def renderer(self) -> Renderer:
+        if self.__renderer is None:
+            self.__renderer = get_default_renderer()
+        return self.__renderer
+
+    def get_printer(self) -> TapenPrinter:
+        assert self.__printer_factory is not None, "Class is not initialized. Forgot self.init()?"
+        return self.__printer_factory.get_first_printer()
 
 
 class ImportLibExtension(BaseCliExtension):
@@ -54,27 +99,48 @@ class ImportLibExtension(BaseCliExtension):
         parser.add_argument("url", type=str, action="store", help="library url")
 
     def handle(self, args: argparse.Namespace):
-        config = self.load_config(args)
-        template_library = TemplateLibrary(config.get(const.CONF_LIBRARIES))
-        template_library.fetch_libraries()
-        template = template_library.load_template("jb:template1")
+        self.init(args)
+        CLI.print_info("Adding library \"{}\" (endpoint {})...".format(args.name, args.url))
+        self.template_library.add_library(args.name, args.url)
+        self.config.get(const.CONF_LIBRARIES)[args.name] = args.url
+        self.persist_config()
+        CLI.print_info("Library {} has been added to config file".format(args.name))
 
-        print_job = PrintJob(template, dict(default="Hello"))
-        renderer = get_default_renderer()
-        renderer.persist_rendered_image_as_file = True
-        bitmap = renderer.render_bitmap(print_job, TapeParams())
 
-        factory = get_print_factory()
-        printer = factory.get_first_printer()
-        if printer:
-            print("Found printer: " + str(printer))
+class PrintExtension(BaseCliExtension):
+    COMMAND_NAME = "print"
+    COMMAND_DESCRIPTION = "Renders and prints given data"
+    DEFAULT_TEMPLATE_NAME = "std:default"
+
+    @classmethod
+    def setup_parser(cls, parser: argparse.ArgumentParser):
+        parser.add_argument("template", action="store", help="Template to use")
+        parser.add_argument("data", nargs="*", action="store", help="Data to be printed (will be passed into template)")
+
+    def __is_template_name(self, name: str) -> bool:
+        return ":" in name
+
+    def handle(self, args: argparse.Namespace):
+        self.init(args)
+        template_name = args.template
+        data = args.data
+        if not self.__is_template_name(template_name):
+            data = [template_name] + data
+            template_name = self.DEFAULT_TEMPLATE_NAME
+        template = self.template_library.load_template(template_name)
+        # Load printer data
+        printer = self.get_printer()
+        if printer is None:
+            CLI.print_error("Printer is not connected.")
+            exit(1)
         else:
-            print("Device is not detected")
-            return
+            CLI.print_info("Detected printer: {}".format(printer))
         printer.init()
-        status = printer.get_status()
-        print("Detected tape: {}".format(status.tape_info))
-        # printer.print_image(bitmap)
+        printer_status = printer.get_status()
+        for x in data:
+            print_job = PrintJob(template, dict(default=x))
+            bitmap = self.renderer.render_bitmap(print_job, printer_status.tape_info)
+            printer.print_image(bitmap)
 
 
 def main(argv: List[str]):
@@ -85,6 +151,7 @@ def main(argv: List[str]):
     # Extensions
     app_manager.register_global_args_extension()
     app_manager.register_extension(ImportLibExtension)
+    app_manager.register_extension(PrintExtension)
     app_manager.setup()
     try:
         # Parse arguments

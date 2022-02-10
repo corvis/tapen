@@ -1,0 +1,16 @@
+template:
+  name: Default template
+  description: |
+    Flexible template suitable for any tape type. It generates a single line of text aiming to utilize
+    all available space.
+  author: Tapen Team <tapen@googlegroups.com>
+  license: cc-0
+
+params:
+  default:
+    required: true
+    validator: string
+
+layout:
+  template: |
+    <p>{{param.default}}</p>
