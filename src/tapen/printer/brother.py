@@ -27,6 +27,7 @@ class PTouchTapeInfo(TapeInfo):
     def width_mm(self) -> float:
         return self.__raw.width_mm
 
+    @property
     def padding_vertical_mm(self) -> float:
         return self.__raw.padding_vertical_mm
 

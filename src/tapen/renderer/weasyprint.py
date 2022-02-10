@@ -64,27 +64,21 @@ class WeasyprintRenderer(Renderer):
         ensure_dir(str(path))
         return path / file_name
 
-    def __page_config_css(self, height_px, width_px: float = None) -> str:
-        # return PAGE_SIZE_CONFIG_TEMPLATE.format(
-        #     width=str(height_px) + "px",
-        #     height="9000px" if width_px is None else str(width_px) + "px"
-        # )
+    def __page_config_css(self, tape_params: TapeInfo, width_px: float = None) -> str:
         return PAGE_SIZE_CONFIG_TEMPLATE.format(
-            width="6mm",
+            width="{}mm".format(tape_params.width_mm),
             height="9000px" if width_px is None else str(width_px) + "px"
         )
 
-    def __page_set_baseline_font(self, height_px: int) -> str:
-        TAPE_VERTICAL_PADDING = 0.70
-        TAPE_HORIZONTAL_PADDING = 0
-        height_mm = 4.5
+    def __page_set_baseline_font(self, tape_params: TapeInfo) -> str:
+        printable_height = tape_params.width_mm - 2 * tape_params.padding_vertical_mm
         return BASELINE_FONT.format(
-            size="{}mm".format(height_mm),
-            line_height="{}mm".format(height_mm),
-            padding_top="{}mm".format(TAPE_VERTICAL_PADDING),
-            padding_bottom="{}mm".format(TAPE_VERTICAL_PADDING),
-            padding_left="{}px".format(TAPE_HORIZONTAL_PADDING),
-            padding_right="{}px".format(TAPE_HORIZONTAL_PADDING)
+            size="{}mm".format(printable_height),
+            line_height="{}mm".format(printable_height),
+            padding_top="{}mm".format(tape_params.padding_vertical_mm),
+            padding_bottom="{}mm".format(tape_params.padding_vertical_mm),
+            padding_left="{}px".format(0),
+            padding_right="{}px".format(0)
         )
 
     def __find_body_width(self, page: wp.Page) -> Optional[float]:
@@ -110,12 +104,11 @@ class WeasyprintRenderer(Renderer):
             string=BASE_TEMPLATE.format(content=label_html),
             media_type="screen" if is_preview else "print")
         # Page Size config
-        HEIGHT_PX = 32
-        page_config = self.__page_config_css(HEIGHT_PX)
+        page_config = self.__page_config_css(tape_params)
         auto_width_mode = True
         stylesheets = [
             wp.CSS(filename=self.__get_resource_path("default.css")),
-            wp.CSS(string=self.__page_set_baseline_font(HEIGHT_PX))
+            wp.CSS(string=self.__page_set_baseline_font(tape_params))
         ]
         if print_job.template.layout_css is not None:
             label_css = self.template_processor.process_string(print_job.template.layout_css,
@@ -124,7 +117,7 @@ class WeasyprintRenderer(Renderer):
         if auto_width_mode:
             rendered_label = html.render(stylesheets=stylesheets + [wp.CSS(string=page_config)])
             calculated_width_px = self.__find_body_width(rendered_label.pages[0])
-            page_config = self.__page_config_css(HEIGHT_PX, calculated_width_px)
+            page_config = self.__page_config_css(tape_params, calculated_width_px)
         rendered_label = html.render(stylesheets=stylesheets + [wp.CSS(string=page_config)])
         result_png = BytesIO()
         rendered_label.write_png(result_png, resolution=dpi)

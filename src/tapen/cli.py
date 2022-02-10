@@ -137,6 +137,7 @@ class PrintExtension(BaseCliExtension):
             CLI.print_info("Detected printer: {}".format(printer))
         printer.init()
         printer_status = printer.get_status()
+        CLI.print_info("\tTape: {}".format(printer_status.tape_info))
         for x in data:
             print_job = PrintJob(template, dict(default=x))
             bitmap = self.renderer.render_bitmap(print_job, printer_status.tape_info)

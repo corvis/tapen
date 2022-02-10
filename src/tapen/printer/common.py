@@ -34,6 +34,8 @@ class TapeInfo:
     def width_mm(self) -> float:
         raise NotImplementedError
 
+    @property
+    @abc.abstractmethod
     def padding_vertical_mm(self) -> float:
         raise NotImplementedError
 
