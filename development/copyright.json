@@ -1,0 +1,11 @@
+{
+    "author": "Dmitry Berezovsky",
+    "back": false,
+    "exclude": "",
+    "include": "*.py",
+    "license": "gpl3",
+    "program": "Tapen",
+    "short": "Tapen - software for managing label printers",
+    "single": true,
+    "year": "2022"
+}

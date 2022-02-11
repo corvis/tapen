@@ -1,3 +1,19 @@
+#    Tapen - software for managing label printers
+#    Copyright (C) 2022 Dmitry Berezovsky
+#
+#    Tapen is free software: you can redistribute it and/or modify
+#    it under the terms of the GNU General Public License as published by
+#    the Free Software Foundation, either version 3 of the License, or
+#    (at your option) any later version.
+#
+#    Tapen is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU General Public License for more details.
+#
+#    You should have received a copy of the GNU General Public License
+#    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
 import logging
 from io import BytesIO
 from pathlib import Path
@@ -47,11 +63,9 @@ LOGGER = logging.getLogger("renderer.weasyprint")
 
 
 class WeasyprintRenderer(Renderer):
-
     def __init__(self, template_processor: TemplateProcessor) -> None:
         super().__init__()
         self.template_processor = template_processor
-
 
     def __get_resource_path(self, name: str):
         path = RESOURCES_DIR / name
@@ -66,8 +80,7 @@ class WeasyprintRenderer(Renderer):
 
     def __page_config_css(self, tape_params: TapeInfo, width_px: float = None) -> str:
         return PAGE_SIZE_CONFIG_TEMPLATE.format(
-            width="{}mm".format(tape_params.width_mm),
-            height="9000px" if width_px is None else str(width_px) + "px"
+            width="{}mm".format(tape_params.width_mm), height="9000px" if width_px is None else str(width_px) + "px"
         )
 
     def __page_set_baseline_font(self, tape_params: TapeInfo) -> str:
@@ -78,41 +91,35 @@ class WeasyprintRenderer(Renderer):
             padding_top="{}mm".format(tape_params.padding_vertical_mm),
             padding_bottom="{}mm".format(tape_params.padding_vertical_mm),
             padding_left="{}px".format(0),
-            padding_right="{}px".format(0)
+            padding_right="{}px".format(0),
         )
 
     def __find_body_width(self, page: wp.Page) -> Optional[float]:
         try:
             body = page._page_box.all_children()[0].all_children()[0]
             return int(body.width + body.padding_left + body.padding_right)
-        except:
+        except Exception:
             return None
 
     def __create_processing_context(self, print_job: PrintJob, tape_params: TapeInfo, is_preview=False):
-        return dict(
-            params=print_job.params,
-            param=print_job.params,
-            tape=tape_params,
-            is_preview=is_preview
-        )
+        return dict(params=print_job.params, param=print_job.params, tape=tape_params, is_preview=is_preview)
 
     def render(self, print_job: PrintJob, tape_params: TapeInfo, is_preview=False, dpi=180):
         processing_context = self.__create_processing_context(print_job, tape_params, is_preview)
         label_html = self.template_processor.process(print_job.template, processing_context)
 
-        html = wp.HTML(
-            string=BASE_TEMPLATE.format(content=label_html),
-            media_type="screen" if is_preview else "print")
+        html = wp.HTML(string=BASE_TEMPLATE.format(content=label_html), media_type="screen" if is_preview else "print")
         # Page Size config
         page_config = self.__page_config_css(tape_params)
         auto_width_mode = True
         stylesheets = [
             wp.CSS(filename=self.__get_resource_path("default.css")),
-            wp.CSS(string=self.__page_set_baseline_font(tape_params))
+            wp.CSS(string=self.__page_set_baseline_font(tape_params)),
         ]
         if print_job.template.layout_css is not None:
-            label_css = self.template_processor.process_string(print_job.template.layout_css,
-                                                               print_job.template.name + "/css", processing_context)
+            label_css = self.template_processor.process_string(
+                print_job.template.layout_css, print_job.template.name + "/css", processing_context
+            )
             stylesheets.append(wp.CSS(string=label_css))
         if auto_width_mode:
             rendered_label = html.render(stylesheets=stylesheets + [wp.CSS(string=page_config)])

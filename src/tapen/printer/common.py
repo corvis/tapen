@@ -1,11 +1,27 @@
+#    Tapen - software for managing label printers
+#    Copyright (C) 2022 Dmitry Berezovsky
+#
+#    Tapen is free software: you can redistribute it and/or modify
+#    it under the terms of the GNU General Public License as published by
+#    the Free Software Foundation, either version 3 of the License, or
+#    (at your option) any later version.
+#
+#    Tapen is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU General Public License for more details.
+#
+#    You should have received a copy of the GNU General Public License
+#    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
 import abc
 from enum import Enum
 from typing import List, Optional
 
 from PIL.Image import Image
 
-class Color:
 
+class Color:
     def __init__(self, id: int, name: str, css_name: str) -> None:
         self.id = id
         self.name = name
@@ -16,7 +32,6 @@ class Color:
 
 
 class TapeInfo:
-
     @property
     @abc.abstractmethod
     def id(self) -> int:
@@ -57,7 +72,6 @@ class TapeInfo:
 
 
 class PrinterStatus(abc.ABC):
-
     @property
     @abc.abstractmethod
     def tape_info(self) -> TapeInfo:
@@ -65,7 +79,6 @@ class PrinterStatus(abc.ABC):
 
 
 class TapenPrinter(abc.ABC):
-
     @abc.abstractmethod
     def init(self):
         raise NotImplementedError
@@ -98,7 +111,6 @@ class PrintingMode(Enum):
 
 
 class PrinterFactory(abc.ABC):
-
     @abc.abstractmethod
     def discover_printers(self) -> List[TapenPrinter]:
         pass
@@ -108,5 +120,5 @@ class PrinterFactory(abc.ABC):
         return printers[0] if len(printers) > 0 else None
 
     @abc.abstractmethod
-    def get_cached_tape_info(self, printer_id: Optional[str]=None) -> TapeInfo:
+    def get_cached_tape_info(self, printer_id: Optional[str] = None) -> Optional[TapeInfo]:
         pass

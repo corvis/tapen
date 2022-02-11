@@ -1,3 +1,19 @@
+#    Tapen - software for managing label printers
+#    Copyright (C) 2022 Dmitry Berezovsky
+#
+#    Tapen is free software: you can redistribute it and/or modify
+#    it under the terms of the GNU General Public License as published by
+#    the Free Software Foundation, either version 3 of the License, or
+#    (at your option) any later version.
+#
+#    Tapen is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU General Public License for more details.
+#
+#    You should have received a copy of the GNU General Public License
+#    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
 import logging
 import os
 from typing import Optional, Dict, Union, Callable
@@ -6,12 +22,12 @@ from cli_rack.loader import BaseLoader, BaseLocatorDef, LoaderRegistry, LoadedDa
 
 
 class LibraryLocatorDef(BaseLocatorDef):
-    PREFIX = ''
-    TYPE = 'lib'
-    PATH_SEPARATOR = ':'
+    PREFIX = ""
+    TYPE = "lib"
+    PATH_SEPARATOR = ":"
 
     def __init__(
-            self, repo_name: str, path: str, name: Optional[str] = None, original_locator: Optional[str] = None
+        self, repo_name: str, path: str, name: Optional[str] = None, original_locator: Optional[str] = None
     ) -> None:
         self.repo_name = repo_name
         self.path = path
@@ -37,7 +53,7 @@ class LibraryLoader(BaseLoader):
     LOCATOR_CLS = LibraryLocatorDef
 
     def __init__(
-            self, repos: Dict[str, LoadedDataMeta], package_loader: LoaderRegistry, target_dir="tmp/external"
+        self, repos: Dict[str, LoadedDataMeta], package_loader: LoaderRegistry, target_dir="tmp/external"
     ) -> None:
         super().__init__(logging.getLogger("loader.lib"), target_dir)
         self.libraries = repos
@@ -75,9 +91,12 @@ class LibraryLoader(BaseLoader):
                 )
             )
 
-    def load(self, locator_: Union[str, BaseLocatorDef],
-             target_path_resolver: Optional[Callable[[LoadedDataMeta], str]] = None,
-             force_reload=False) -> LoadedDataMeta:
+    def load(
+        self,
+        locator_: Union[str, BaseLocatorDef],
+        target_path_resolver: Optional[Callable[[LoadedDataMeta], str]] = None,
+        force_reload=False,
+    ) -> LoadedDataMeta:
         self._logger.info("Loading " + str(locator_))
         locator = self.locator_to_locator_def(locator_)
         if locator.repo_name not in self.libraries:

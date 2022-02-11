@@ -1,3 +1,19 @@
+#    Tapen - software for managing label printers
+#    Copyright (C) 2022 Dmitry Berezovsky
+#
+#    Tapen is free software: you can redistribute it and/or modify
+#    it under the terms of the GNU General Public License as published by
+#    the Free Software Foundation, either version 3 of the License, or
+#    (at your option) any later version.
+#
+#    Tapen is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU General Public License for more details.
+#
+#    You should have received a copy of the GNU General Public License
+#    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
 import ctypes
 import enum
 from typing import NamedTuple, List, Dict
@@ -13,8 +29,18 @@ class TapeInfo(NamedTuple):
 
 
 class DevInfo(object):
-    def __init__(self, name: str, vendor_id: int, product_id: int, max_px_buffer=128, dpi=180,
-                 unsupported_raster=False, packbits=False, is_plite=False, p700_init=False) -> None:
+    def __init__(
+        self,
+        name: str,
+        vendor_id: int,
+        product_id: int,
+        max_px_buffer=128,
+        dpi=180,
+        unsupported_raster=False,
+        packbits=False,
+        is_plite=False,
+        p700_init=False,
+    ) -> None:
         self.name = name
         self.vendor_id = vendor_id
         self.product_id = product_id
@@ -28,35 +54,34 @@ class DevInfo(object):
 
 class PTStatusRaw(ctypes.Structure):
     _fields_ = (
-        ('printheadmark', ctypes.c_uint8),
-        ('size', ctypes.c_uint8),
-        ('brother_code', ctypes.c_uint8),
-        ('series_code', ctypes.c_uint8),
-        ('model', ctypes.c_uint8),
-        ('country', ctypes.c_uint8),
-        ('reserved_1', ctypes.c_uint16),
-        ('error', ctypes.c_uint16),
-        ('media_width', ctypes.c_uint8),
-        ('media_type', ctypes.c_uint8),
-        ('ncol', ctypes.c_uint8),
-        ('fonts', ctypes.c_uint8),
-        ('jp_fonts', ctypes.c_uint8),
-        ('mode', ctypes.c_uint8),
-        ('density', ctypes.c_uint8),
-        ('media_len', ctypes.c_uint8),
-        ('status_type', ctypes.c_uint8),
-        ('phase_type', ctypes.c_uint8),
-        ('phase_number', ctypes.c_uint16),
-        ('notif_number', ctypes.c_uint8),
-        ('exp', ctypes.c_uint8),
-        ('tape_color', ctypes.c_uint8),
-        ('text_color', ctypes.c_uint8),
-        ('hw_setting', ctypes.c_uint32),
+        ("printheadmark", ctypes.c_uint8),
+        ("size", ctypes.c_uint8),
+        ("brother_code", ctypes.c_uint8),
+        ("series_code", ctypes.c_uint8),
+        ("model", ctypes.c_uint8),
+        ("country", ctypes.c_uint8),
+        ("reserved_1", ctypes.c_uint16),
+        ("error", ctypes.c_uint16),
+        ("media_width", ctypes.c_uint8),
+        ("media_type", ctypes.c_uint8),
+        ("ncol", ctypes.c_uint8),
+        ("fonts", ctypes.c_uint8),
+        ("jp_fonts", ctypes.c_uint8),
+        ("mode", ctypes.c_uint8),
+        ("density", ctypes.c_uint8),
+        ("media_len", ctypes.c_uint8),
+        ("status_type", ctypes.c_uint8),
+        ("phase_type", ctypes.c_uint8),
+        ("phase_number", ctypes.c_uint16),
+        ("notif_number", ctypes.c_uint8),
+        ("exp", ctypes.c_uint8),
+        ("tape_color", ctypes.c_uint8),
+        ("text_color", ctypes.c_uint8),
+        ("hw_setting", ctypes.c_uint32),
     )
 
 
 class PTStatus(object):
-
     def __init__(self, raw_status: PTStatusRaw) -> None:
         super().__init__()
         self.raw = raw_status
@@ -70,7 +95,7 @@ class PTStatus(object):
         return TapeColor.get_by_code(int(self.raw.tape_color))
 
     @property
-    def text_color(self) -> 'TapeTextColor':
+    def text_color(self) -> "TapeTextColor":
         return TapeTextColor.get_by_code(int(self.raw.text_color))
 
     @property
@@ -112,7 +137,7 @@ class TapeTextColor(BaseColorEnum):
     INCOMPATIBLE = 0xFF, "Incompatible", "grey"
 
     @classmethod
-    def get_by_code(cls, code: int) -> 'TapeTextColor':
+    def get_by_code(cls, code: int) -> "TapeTextColor":
         return super().get_by_code(code)  # type: ignore
 
 
@@ -141,7 +166,7 @@ class TapeColor(BaseColorEnum):
     INCOMPATIBLE = 0xFF, "Incompatible", "grey"
 
     @classmethod
-    def get_by_code(cls, code: int) -> 'TapeColor':
+    def get_by_code(cls, code: int) -> "TapeColor":
         return super().get_by_code(code)  # type: ignore
 
 
@@ -154,8 +179,6 @@ _TAPE_PARAMS_180DPI: List[TapeInfo] = [
     TapeInfo("24mm", 24, 261, 240, 170, 2.96),
 ]
 
-TAPE_PARAMS: Dict[int, List[TapeInfo]] = {
-    180: _TAPE_PARAMS_180DPI
-}
+TAPE_PARAMS: Dict[int, List[TapeInfo]] = {180: _TAPE_PARAMS_180DPI}
 
 DEFAULT_DPI = 180

@@ -1,3 +1,19 @@
+#    Tapen - software for managing label printers
+#    Copyright (C) 2022 Dmitry Berezovsky
+#
+#    Tapen is free software: you can redistribute it and/or modify
+#    it under the terms of the GNU General Public License as published by
+#    the Free Software Foundation, either version 3 of the License, or
+#    (at your option) any later version.
+#
+#    Tapen is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU General Public License for more details.
+#
+#    You should have received a copy of the GNU General Public License
+#    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
 import pickle
 from pathlib import Path
 from typing import List, Optional
@@ -14,7 +30,6 @@ TAPE_CACHE_DIR = Path(config.app_dirs.user_cache_dir) / "tape-cache"
 
 
 class PTouchTapeInfo(TapeInfo):
-
     def __init__(self, tape_info: PTouch_TapeInfo, color: Color, text_color: Color, density: int) -> None:
         super().__init__()
         self.__raw = tape_info
@@ -52,7 +67,6 @@ class PTouchTapeInfo(TapeInfo):
 
 
 class PTouchPrinterStatus(PrinterStatus):
-
     def __pt_color_enum_to_color(self, color_enum: BaseColorEnum) -> Color:
         return Color(color_enum.code, color_enum.color_name, color_enum.css_color)
 
@@ -77,7 +91,6 @@ class PTouchPrinterStatus(PrinterStatus):
 
 
 class PTouchPrinter(TapenPrinter):
-
     def __init__(self, ptouch_printer: PTouch_Printer) -> None:
         super().__init__()
         self._ptouch_printer = ptouch_printer
@@ -109,7 +122,6 @@ class PTouchPrinter(TapenPrinter):
 
 
 class PTouchFactory(PrinterFactory):
-
     def get_cached_tape_info(self, printer_id: Optional[str] = None) -> Optional[TapeInfo]:
         ensure_dir(str(TAPE_CACHE_DIR))
         cache_file: Optional[Path] = None
@@ -121,7 +133,7 @@ class PTouchFactory(PrinterFactory):
                     cache_file = x
                     continue
         if cache_file is None or not cache_file.exists():
-            return
+            return None
         with open(cache_file, "rb") as f:
             return pickle.load(f)
 

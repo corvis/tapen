@@ -1,3 +1,19 @@
+#    Tapen - software for managing label printers
+#    Copyright (C) 2022 Dmitry Berezovsky
+#
+#    Tapen is free software: you can redistribute it and/or modify
+#    it under the terms of the GNU General Public License as published by
+#    the Free Software Foundation, either version 3 of the License, or
+#    (at your option) any later version.
+#
+#    Tapen is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU General Public License for more details.
+#
+#    You should have received a copy of the GNU General Public License
+#    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
 import datetime
 import os
 from pathlib import Path
@@ -12,27 +28,33 @@ from tapen.library.loader import LibraryLoader
 from tapen.utils import yaml_file_to_dict
 from cli_rack_validation import crv
 
-MANIFEST_FILE_NAME = 'manifest.yaml'
+MANIFEST_FILE_NAME = "manifest.yaml"
 STANDARD_LIB_NAME = "std"
 STANDARD_LIB_PATH = Path(__file__).parent.parent / "resources" / "std-lib"
 
-MANIFEST_META_SCHEMA = crv.Schema({
-    crv.Optional(const.MF_NAME): crv.string,
-    crv.Optional(const.MF_DESCRIPTION): crv.string,
-    crv.Optional(const.MF_AUTHOR): crv.ensure_email_dict,
-    crv.Optional(const.MF_LICENSE): crv.string,
-})
+MANIFEST_META_SCHEMA = crv.Schema(
+    {
+        crv.Optional(const.MF_NAME): crv.string,
+        crv.Optional(const.MF_DESCRIPTION): crv.string,
+        crv.Optional(const.MF_AUTHOR): crv.ensure_email_dict,
+        crv.Optional(const.MF_LICENSE): crv.string,
+    }
+)
 
-MANIFEST_LAYOUT_SCHEMA = crv.Schema({
-    crv.Required(const.MF_TEMPLATE): crv.string_strict,
-    crv.Optional(const.MF_CSS): crv.string,
-})
+MANIFEST_LAYOUT_SCHEMA = crv.Schema(
+    {
+        crv.Required(const.MF_TEMPLATE): crv.string_strict,
+        crv.Optional(const.MF_CSS): crv.string,
+    }
+)
 
-MANIFEST_SCHEMA = crv.Schema({
-    crv.Required(const.MF_META_SECTION, default={}): MANIFEST_META_SCHEMA,
-    crv.Required(const.MF_PARAMS, default={}): validate.valid_object_def,
-    crv.Required(const.MF_LAYOUT): MANIFEST_LAYOUT_SCHEMA,
-})
+MANIFEST_SCHEMA = crv.Schema(
+    {
+        crv.Required(const.MF_META_SECTION, default={}): MANIFEST_META_SCHEMA,
+        crv.Required(const.MF_PARAMS, default={}): validate.valid_object_def,
+        crv.Required(const.MF_LAYOUT): MANIFEST_LAYOUT_SCHEMA,
+    }
+)
 
 
 class TemplateLibrary(object):
@@ -69,16 +91,16 @@ class TemplateLibrary(object):
             self.__lib_config[name] = url
         if name not in self.libraries or force_reload:
             self.libraries[name] = self.lib_loader.load(url, self._lib_dir_resolver)
-        
+
     def load_template(self, locator: str) -> Template:
         meta = self.loader.load(locator)
         template_dir = Path(meta.path) / meta.target_path
-        manifest_file = (template_dir / MANIFEST_FILE_NAME)
+        manifest_file = template_dir / MANIFEST_FILE_NAME
         if not manifest_file.is_file():
             raise ValueError(
                 "Missing manifest file for template {}. Check your template library and ensure it has valid structure."
-                "\n\tCache location: {}".format(
-                    locator, meta.path))
+                "\n\tCache location: {}".format(locator, meta.path)
+            )
         manifest_dict = yaml_file_to_dict(manifest_file)
         manifest_dict = MANIFEST_SCHEMA(manifest_dict)
         return Template(meta.target_path, manifest_dict)

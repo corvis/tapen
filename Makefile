@@ -6,7 +6,7 @@ SHELL := /bin/bash
 PYPI_API_KEY :=
 PYPI_REPOSITORY_URL :=
 ALPHA_VERSION :=
-SRC_ROOT := ./src/pthouch_py
+SRC_ROOT := ./src
 
 .DEFAULT_GOAL := pre_commit
 
@@ -28,7 +28,6 @@ flake8:
        echo "Running Flake8 checks..."; \
        flake8 $(SRC_ROOT) --count --statistics; \
        \
-       flake8 $(SRC_ROOT)/../../examples --count --statistics; \
        echo "DONE: Flake8"; \
     )
 
@@ -39,7 +38,6 @@ mypy:
        echo "Running MyPy checks..."; \
        mypy --show-error-codes $(SRC_ROOT); \
        \
-       # mypy --show-error-codes $(SRC_ROOT)/../../examples; \
        echo "DONE: MyPy"; \
     )
 
@@ -49,7 +47,6 @@ format:
        echo "Running Black code formatter..."; \
        black $(SRC_ROOT); \
        \
-       black $(SRC_ROOT)/../../examples; \
        echo "DONE: Black"; \
     )
 
@@ -59,7 +56,6 @@ check-format:
        echo "Running Black format check..."; \
        black --check $(SRC_ROOT); \
        \
-       black --check $(SRC_ROOT)/../../examples; \
        echo "DONE: Black format check"; \
     )
 	

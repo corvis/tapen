@@ -1,6 +1,22 @@
+#    Tapen - software for managing label printers
+#    Copyright (C) 2022 Dmitry Berezovsky
+#
+#    Tapen is free software: you can redistribute it and/or modify
+#    it under the terms of the GNU General Public License as published by
+#    the Free Software Foundation, either version 3 of the License, or
+#    (at your option) any later version.
+#
+#    Tapen is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU General Public License for more details.
+#
+#    You should have received a copy of the GNU General Public License
+#    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
 import logging
 from pathlib import Path
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, Tuple
 
 import yaml
 from appdirs import AppDirs
@@ -15,18 +31,18 @@ LIBRARIES_SCHEMA = crv.Schema(
     crv.Any(
         {validate.valid_id: validate.valid_locator},
         crv.ensure_list(
-            crv.Any(validate.valid_locator,
-                    {crv.Required(const.CONF_NAME): str, crv.Required(const.CONF_URL): validate.valid_locator})
+            crv.Any(
+                validate.valid_locator,
+                {crv.Required(const.CONF_NAME): str, crv.Required(const.CONF_URL): validate.valid_locator},
+            )
         ),
     )
 )
 
-CONFIG_SCHEMA = crv.Schema({
-    crv.Required(const.CONF_LIBRARIES, default=[]): LIBRARIES_SCHEMA
-})
+CONFIG_SCHEMA = crv.Schema({crv.Required(const.CONF_LIBRARIES, default=[]): LIBRARIES_SCHEMA})
 
-DEFAULT_CONFIG = {}
-DEFAULT_CONFIG_FILE_NAME = 'conf.yaml'
+DEFAULT_CONFIG: Dict[str, Any] = {}
+DEFAULT_CONFIG_FILE_NAME = "conf.yaml"
 
 
 def read_config(p: Path, allow_create=True) -> Dict[str, Any]:
@@ -65,19 +81,16 @@ def write_config_file(config: Dict[str, Any], p: Path):
         yaml.dump(config, f)
 
 
-def load_config(location_override: Optional[str] = None, allow_create=True) -> (str, Dict[str, Any]):
+def load_config(location_override: Optional[str] = None, allow_create=True) -> Tuple[str, Dict[str, Any]]:
     if location_override is not None:
         return location_override, read_config(Path(location_override), allow_create)
-    search_locations = [
-        Path(DEFAULT_CONFIG_FILE_NAME),
-        Path(app_dirs.user_config_dir) / DEFAULT_CONFIG_FILE_NAME
-    ]
+    search_locations = [Path(DEFAULT_CONFIG_FILE_NAME), Path(app_dirs.user_config_dir) / DEFAULT_CONFIG_FILE_NAME]
     location = search_locations[-1]
     for x in search_locations:
         if x.exists():
             location = x
             break
-    return location, read_config(location, allow_create)
+    return str(location), read_config(location, allow_create)
 
 
 app_dirs = AppDirs("tapen")
