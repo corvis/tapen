@@ -36,7 +36,8 @@ mypy:
        set -e; \
        if [ -z $(SKIP_VENV) ]; then source $(VIRTUAL_ENV_PATH)/bin/activate; fi; \
        echo "Running MyPy checks..."; \
-       mypy --show-error-codes $(SRC_ROOT); \
+       mypy --show-error-codes $(SRC_ROOT)/tapen; \
+       mypy --show-error-codes $(SRC_ROOT)/ptouch_py; \
        \
        echo "DONE: MyPy"; \
     )
@@ -45,7 +46,7 @@ format:
 	@( \
        if [ -z $(SKIP_VENV) ]; then source $(VIRTUAL_ENV_PATH)/bin/activate; fi; \
        echo "Running Black code formatter..."; \
-       black $(SRC_ROOT); \
+       black $(SRC_ROOT)/tapen $(SRC_ROOT)/ptouch_py; \
        \
        echo "DONE: Black"; \
     )
@@ -54,7 +55,7 @@ check-format:
 	@( \
        if [ -z $(SKIP_VENV) ]; then source $(VIRTUAL_ENV_PATH)/bin/activate; fi; \
        echo "Running Black format check..."; \
-       black --check $(SRC_ROOT); \
+       black --check $(SRC_ROOT)/tapen $(SRC_ROOT)/ptouch_py; \
        \
        echo "DONE: Black format check"; \
     )
@@ -67,7 +68,7 @@ build: copyright format lint clean
 	   set -e; \
        if [ -z $(SKIP_VENV) ]; then source $(VIRTUAL_ENV_PATH)/bin/activate; fi; \
        echo "Building wheel package..."; \
-       bash -c "cd src && VERSION_OVERRIDE="$(ALPHA_VERSION)" python ./setup.py bdist_wheel --dist-dir=../dist --bdist-dir=../../build"; \
+       bash -c "cd src && VERSION_OVERRIDE="$(ALPHA_VERSION)" python ./setup.py bdist_wheel --dist-dir=../dist --bdist-dir=../build"; \
        echo "DONE: wheel package"; \
     )
 	@( \

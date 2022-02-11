@@ -83,6 +83,7 @@ class TapenAppManager(CliAppManager):
     ) -> None:
         super().__init__(prog_name, add_commands_parser, allow_multiple_commands, description, epilog, **kwargs)
         self.register_global_args_extension(GlobalConfigFile)
+        self.allow_multiple_commands = False
 
 
 class BaseCliExtension(CliExtension, metaclass=abc.ABCMeta):
@@ -178,12 +179,12 @@ class PrintExtension(BaseCliExtension):
             help="Print mode (applicable for for more than one labels only)",
         )
         parser.add_argument(
-            "-c",
+            "-q",
             "--copies",
             action="store",
             type=int,
             default=1,
-            help="Print mode (applicable for for more than one labels only)",
+            help="Quantity of copies of each label",
         )
         parser.add_argument(
             "-f",
@@ -255,6 +256,19 @@ class PrintExtension(BaseCliExtension):
                 CLI.print_warn("Printing skipped as per user request.")
 
 
+class TppExtension(GlobalArgsExtension):
+    def __init__(self, app_manager: Optional["CliAppManager"] = None) -> None:
+        super().__init__(app_manager)
+        self.__printExt = PrintExtension()
+
+    @classmethod
+    def setup_parser(cls, parser: argparse.ArgumentParser):
+        PrintExtension.setup_parser(parser)
+
+    def handle(self, args):
+        self.__printExt.handle(args)
+
+
 def main(argv: List[str]):
     CLI.setup()
     CLI.print_info("\nTapen version {}\n".format(VERSION), ansi.Mod.BOLD & ansi.Fg.LIGHT_BLUE)
@@ -278,9 +292,29 @@ def main(argv: List[str]):
         CLI.print_error(e)
 
 
-def entrypoint():
+def main_tpp(argv: List[str]):
+    CLI.setup()
+    app_manager = TapenAppManager("tapen")
+    app_manager.parse_and_handle_global()
+    app_manager.register_global_args_extension(TppExtension)
+    app_manager.add_commands_parser = False
+    app_manager.setup()
+    try:
+        # Parse arguments
+        parsed_commands = app_manager.parse(argv)
+        ext = TppExtension()
+        ext.handle(parsed_commands[0])
+    except Exception as e:
+        CLI.print_error(e)
+
+
+def default_entrypoint():
     main(sys.argv[1:])
 
 
+def tpp_entrypoint():
+    main_tpp(sys.argv[1:])
+
+
 if __name__ == "__main__":
-    entrypoint()
+    default_entrypoint()

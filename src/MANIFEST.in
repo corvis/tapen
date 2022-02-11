@@ -1,0 +1,4 @@
+include ../LICENSE LICENSE
+include ../README.md README.md
+recursive-include tapen/resources/ *
+recursive-include tapen/renderer/resources/ *

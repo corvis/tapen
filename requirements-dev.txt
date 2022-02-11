@@ -9,3 +9,4 @@ m2r==0.2.1
 flake8==3.9.2
 black==21.7b
 mypy>=0.910
+mistune<2.0.0
