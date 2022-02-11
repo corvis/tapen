@@ -1,9 +1,16 @@
-from typing import List
+import pickle
+from pathlib import Path
+from typing import List, Optional
+
+from cli_rack.utils import ensure_dir
 
 from ptouch_py.core import Printer as PTouch_Printer, find_printers
 from ptouch_py.domain import PTStatus, TapeInfo as PTouch_TapeInfo, TAPE_PARAMS, BaseColorEnum, DEFAULT_DPI
+from tapen import config
 from tapen.printer.common import TapenPrinter, PrinterStatus, Color, TapeInfo, PrinterFactory
 from PIL.Image import Image
+
+TAPE_CACHE_DIR = Path(config.app_dirs.user_cache_dir) / "tape-cache"
 
 
 class PTouchTapeInfo(TapeInfo):
@@ -82,14 +89,41 @@ class PTouchPrinter(TapenPrinter):
         self._ptouch_printer.print_image(image, cut_tape)
 
     def get_status(self) -> PTouchPrinterStatus:
-        return PTouchPrinterStatus(self._ptouch_printer.get_status())
+        status = PTouchPrinterStatus(self._ptouch_printer.get_status())
+        self.__persist_tape_info(status.tape_info)
+        return status
 
     @property
     def verbose_name(self):
         return str(self._ptouch_printer)
 
+    @property
+    def id(self) -> str:
+        return self._ptouch_printer.serial_number
+
+    def __persist_tape_info(self, tape_info: TapeInfo):
+        ensure_dir(str(TAPE_CACHE_DIR))
+        cache_file = TAPE_CACHE_DIR / (self.id + ".bin")
+        with open(cache_file, "wb") as f:
+            pickle.dump(tape_info, f)
+
 
 class PTouchFactory(PrinterFactory):
+
+    def get_cached_tape_info(self, printer_id: Optional[str] = None) -> Optional[TapeInfo]:
+        ensure_dir(str(TAPE_CACHE_DIR))
+        cache_file: Optional[Path] = None
+        if printer_id:
+            cache_file = TAPE_CACHE_DIR / (printer_id + ".bin")
+        else:
+            for x in TAPE_CACHE_DIR.iterdir():
+                if x.is_file() and x.name.endswith(".bin"):
+                    cache_file = x
+                    continue
+        if cache_file is None or not cache_file.exists():
+            return
+        with open(cache_file, "rb") as f:
+            return pickle.load(f)
 
     def discover_printers(self) -> List[TapenPrinter]:
         return [PTouchPrinter(x) for x in find_printers()]

@@ -11,6 +11,7 @@ params:
 
 layout:
   template: |
-    <p><strong>M</strong>:&nbsp;{{param.default}}</p>
+    <p>{{param.default}}</p>
   css: |
     p.test { color: red; }
+    .label {font-size: 0.8em;}

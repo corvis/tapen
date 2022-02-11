@@ -2,6 +2,7 @@ import abc
 import argparse
 import logging
 import sys
+from enum import Enum
 from pathlib import Path
 from typing import List, Dict, Any, Optional
 
@@ -17,9 +18,38 @@ from tapen.__version__ import __version__ as VERSION
 from tapen.common.domain import PrintJob
 from tapen.library import TemplateLibrary
 from tapen.printer import get_print_factory, PrinterFactory, TapenPrinter
+from tapen.printer.common import PrintingMode, TapeInfo
 from tapen.renderer import get_default_renderer, Renderer
 
 LOGGER = logging.getLogger("cli")
+
+
+class EnumAction(argparse.Action):
+    """
+    Argparse action for handling Enums
+    """
+
+    def __init__(self, **kwargs):
+        # Pop off the type value
+        enum_type = kwargs.pop("type", None)
+
+        # Ensure an Enum subclass is provided
+        if enum_type is None:
+            raise ValueError("type must be assigned an Enum when using EnumAction")
+        if not issubclass(enum_type, Enum):
+            raise TypeError("type must be an Enum when using EnumAction")
+
+        # Generate choices from the Enum
+        kwargs.setdefault("choices", tuple(e.value for e in enum_type))
+
+        super(EnumAction, self).__init__(**kwargs)
+
+        self._enum = enum_type
+
+    def __call__(self, parser, namespace, values, option_string=None):
+        # Convert value back into an Enum
+        value = self._enum(values)
+        setattr(namespace, self.dest, value)
 
 
 class GlobalConfigFile(GlobalArgsExtension):
@@ -87,6 +117,9 @@ class BaseCliExtension(CliExtension, metaclass=abc.ABCMeta):
         assert self.__printer_factory is not None, "Class is not initialized. Forgot self.init()?"
         return self.__printer_factory.get_first_printer()
 
+    def get_cached_tape_info(self, printer_id: Optional[str]=None) -> Optional[TapeInfo]:
+        return self.__printer_factory.get_cached_tape_info(printer_id)
+
 
 class ImportLibExtension(BaseCliExtension):
     COMMAND_NAME = "import-lib"
@@ -114,8 +147,18 @@ class PrintExtension(BaseCliExtension):
 
     @classmethod
     def setup_parser(cls, parser: argparse.ArgumentParser):
-        parser.add_argument("template", action="store", help="Template to use")
-        parser.add_argument("data", nargs="*", action="store", help="Data to be printed (will be passed into template)")
+        parser.add_argument("-m", "--mode", action=EnumAction, type=PrintingMode,
+                            choices=[x.value for x in PrintingMode], default=PrintingMode.HALF_CUT,
+                            help="Print mode (applicable for for more than one labels only)")
+        parser.add_argument("-c", "--copies", action="store", type=int, default=1,
+                            help="Print mode (applicable for for more than one labels only)")
+        parser.add_argument("-f", "--force-tape-detection", action="store_true", default=False,
+                            help="Forces tape detection even though there is a cached data")
+        parser.add_argument("-s", "--skip-printing", action="store_true", default=False,
+                            help="Renders data and skips printing on the real device")
+        parser.add_argument("template", action="store", type=str, help="Template to use")
+        parser.add_argument("data", nargs="*", action="store", type=str,
+                            help="Data to be printed (will be passed into template)")
 
     def __is_template_name(self, name: str) -> bool:
         return ":" in name
@@ -130,18 +173,39 @@ class PrintExtension(BaseCliExtension):
         template = self.template_library.load_template(template_name)
         # Load printer data
         printer = self.get_printer()
-        if printer is None:
+        if printer is None and not args.skip_printing:
             CLI.print_error("Printer is not connected.")
             exit(1)
         else:
             CLI.print_info("Detected printer: {}".format(printer))
-        printer.init()
-        printer_status = printer.get_status()
-        CLI.print_info("\tTape: {}".format(printer_status.tape_info))
-        for x in data:
-            print_job = PrintJob(template, dict(default=x), cut_tape=False)
-            bitmap = self.renderer.render_bitmap(print_job, printer_status.tape_info)
-            printer.print_image(bitmap, print_job.cut_tape)
+            printer.init()
+        tape_info = self.get_cached_tape_info()
+        if tape_info is None or args.force_tape_detection:
+            if not args.skip_printing or args.force_tape_detection:
+                printer_status = printer.get_status()
+                CLI.print_info("\tTape: {}".format(printer_status.tape_info))
+                tape_info = printer_status.tape_info
+            else:
+                if args.skip_printing:
+                    CLI.print_error("Tape information is not available in cache. Skip printing mode is not available")
+                    exit(2)
+        else:
+            CLI.print_info("Assuming tape: {}".format(tape_info))
+        label_num = 0
+        total_labels = len(data) * args.copies
+        for i, x in enumerate(data):
+            print_job = PrintJob(template, dict(default=x))
+            bitmap = self.renderer.render_bitmap(print_job, tape_info)
+            if not args.skip_printing:
+                for c in range(args.copies):
+                    label_num += 1
+                    if args.mode == PrintingMode.HALF_CUT:
+                        cut_tape = label_num == total_labels    # Cut the last label
+                    else:
+                        cut_tape = True
+                    printer.print_image(bitmap, cut_tape)
+            else:
+                CLI.print_warn("Printing skipped as per user request.")
 
 
 def main(argv: List[str]):

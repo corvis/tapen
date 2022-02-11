@@ -1,10 +1,8 @@
 import abc
+from enum import Enum
 from typing import List, Optional
 
 from PIL.Image import Image
-
-from ptouch_py.core import find_printers
-
 
 class Color:
 
@@ -85,8 +83,18 @@ class TapenPrinter(abc.ABC):
     def verbose_name(self):
         raise NotImplementedError
 
+    @property
+    @abc.abstractmethod
+    def id(self) -> str:
+        pass
+
     def __str__(self) -> str:
         return self.verbose_name
+
+
+class PrintingMode(Enum):
+    HALF_CUT = "half-cut"
+    CUT = "cut"
 
 
 class PrinterFactory(abc.ABC):
@@ -98,3 +106,7 @@ class PrinterFactory(abc.ABC):
     def get_first_printer(self) -> Optional[TapenPrinter]:
         printers = self.discover_printers()
         return printers[0] if len(printers) > 0 else None
+
+    @abc.abstractmethod
+    def get_cached_tape_info(self, printer_id: Optional[str]=None) -> TapeInfo:
+        pass

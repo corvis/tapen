@@ -20,6 +20,7 @@ class Renderer(abc.ABC):
     def __init__(self) -> None:
         super().__init__()
         self.persist_rendered_image_as_file = False
+        self.job_num = 0
 
     @abc.abstractmethod
     def render(self, print_job: PrintJob, tape_params: TapeInfo):

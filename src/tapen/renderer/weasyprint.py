@@ -123,8 +123,9 @@ class WeasyprintRenderer(Renderer):
         rendered_label.write_png(result_png, resolution=dpi)
         result_png.flush()
         result_png.seek(0)
+        self.job_num += 1
         if self.persist_rendered_image_as_file:
-            path = self.__generate_temp_file("rendered-label.png")
+            path = self.__generate_temp_file("rendered-label-{}.png".format(self.job_num))
             with open(path, "wb") as f:
                 LOGGER.debug("Persisting generated image at {}".format(path))
                 f.write(result_png.read())
@@ -134,7 +135,7 @@ class WeasyprintRenderer(Renderer):
         png = self.render(print_job, tape_params, is_preview, dpi)
         bitmap = Image.open(png, "r", ("png",)).convert("1", dither=0)
         if self.persist_rendered_image_as_file:
-            path = self.__generate_temp_file("rendered-label.bmp")
+            path = self.__generate_temp_file("rendered-label-{}.bmp".format(self.job_num))
             LOGGER.debug("Persisting rendered bitmap at {}".format(path))
             bitmap.save(path)
 
