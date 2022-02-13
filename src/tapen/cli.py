@@ -236,7 +236,7 @@ class PrintExtension(BaseCliExtension):
                     CLI.print_error("Tape information is not available in cache. Skip printing mode is not available")
                     exit(2)
         else:
-            CLI.print_info("Assuming tape: {}".format(tape_info))
+            CLI.print_info("Assuming tape {}".format(tape_info))
         label_num = 0
         if len(data) == 0:
             data = [None]

@@ -79,6 +79,15 @@ build: copyright format lint clean
        echo "DONE: source distribution"; \
     )
 
+single-binary:
+	@( \
+	   set -e; \
+       if [ -z $(SKIP_VENV) ]; then source $(VIRTUAL_ENV_PATH)/bin/activate; fi; \
+       echo "Building single binary"; \
+       bash -c "pyinstaller --onefile --windowed tapen.spec"; \
+       echo "DONE: wheel package"; \
+    )
+
 clean:
 	@(rm -rf src/build dist/* *.egg-info src/*.egg-info .pytest_cache)
 
