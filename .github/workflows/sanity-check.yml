@@ -1,0 +1,29 @@
+
+name: Sanity Check
+on: push
+
+jobs: 
+  run:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps: 
+    - name: Checkout repo
+      uses: actions/checkout@v2
+      with:
+        fetch-depth: 1
+    
+    - name: Set up Python
+      uses: actions/setup-python@v2
+      with:
+        python-version: 3.7
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip wheel
+        pip install -r requirements-dev.txt
+      
+    - name: Lint with flake8
+      run: make lint NO_VENV=True
+
+    - name: Run build to make sure it works
+      run: make build NO_VENV=True

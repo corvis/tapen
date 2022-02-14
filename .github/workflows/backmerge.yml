@@ -1,0 +1,28 @@
+
+name: Backmerge
+
+on:
+  push:
+    # Branches to be backmerge into development
+    branches:
+      - alpha
+      - master
+
+jobs: 
+  run:
+    name: Backmerge into development
+    runs-on: ubuntu-latest
+    steps: 
+    - name: Checkout repo
+      uses: actions/checkout@v2
+      with:
+        fetch-depth: 1
+        ref: '${{ github.ref }}'
+
+    - name: Merge into development
+      uses: devmasx/merge-branch@v1.3.1
+      with:
+        type: now
+        from_branch: '${{ github.ref }}'
+        target_branch: development
+        github_token: ${{ secrets.GITHUB_TOKEN }}
