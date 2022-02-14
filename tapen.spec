@@ -7,7 +7,10 @@ block_cipher = None
 a = Analysis(['src/tapen/cli.py'],
              pathex=[],
              binaries=[],
-             datas=[],
+             datas=[
+                ("src/tapen/resources", "tapen/resources"),
+                ("src/tapen/renderer/resources", "tapen/renderer/resources"),
+             ],
              hiddenimports=[],
              hookspath=[],
              hooksconfig={},

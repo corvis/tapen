@@ -84,7 +84,7 @@ single-binary:
 	   set -e; \
        if [ -z $(SKIP_VENV) ]; then source $(VIRTUAL_ENV_PATH)/bin/activate; fi; \
        echo "Building single binary"; \
-       bash -c "pyinstaller --onefile --windowed tapen.spec"; \
+       bash -c "pyinstaller --windowed tapen.spec"; \
        echo "DONE: wheel package"; \
     )
 
