@@ -64,5 +64,5 @@ There are a couple of possible installation methods:
 
 This module is licensed under MIT. This means you are free to use it in commercial projects.
 
-The MIT license clearly explains that there is no warranty for this free software. Please see the included LICENSE file
+The GPLv3 license clearly explains that there is no warranty for this free software. Please see the included LICENSE file
 for details.
