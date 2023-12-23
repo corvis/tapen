@@ -1,18 +1,19 @@
-#    Tapen - software for managing label printers
-#    Copyright (C) 2022 Dmitry Berezovsky
 #
-#    Tapen is free software: you can redistribute it and/or modify
-#    it under the terms of the GNU General Public License as published by
-#    the Free Software Foundation, either version 3 of the License, or
-#    (at your option) any later version.
+# Tapen - software for managing label printers
+# Copyright (C) 2022 Dmitry Berezovsky
 #
-#    Tapen is distributed in the hope that it will be useful,
-#    but WITHOUT ANY WARRANTY; without even the implied warranty of
-#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-#    GNU General Public License for more details.
+# Tapen is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
 #
-#    You should have received a copy of the GNU General Public License
-#    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+# Tapen is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.#
 
 import abc
 import argparse
@@ -75,10 +76,10 @@ class TapenAppManager(CliAppManager):
     def __init__(
         self,
         prog_name: str = "tapen",
-        add_commands_parser=True,
-        allow_multiple_commands=True,
-        description: str = None,
-        epilog: str = None,
+        add_commands_parser: bool = True,
+        allow_multiple_commands: bool = True,
+        description: str | None = None,
+        epilog: str | None = None,
         **kwargs,
     ) -> None:
         super().__init__(prog_name, add_commands_parser, allow_multiple_commands, description, epilog, **kwargs)
@@ -87,13 +88,13 @@ class TapenAppManager(CliAppManager):
 
 
 class BaseCliExtension(CliExtension, metaclass=abc.ABCMeta):
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
-        self.__template_library: Optional[TemplateLibrary] = None
-        self.__config: Optional[Dict[str, Any]] = None
-        self.__config_location: Optional[str] = None
-        self.__renderer: Optional[Renderer] = None
-        self.__printer_factory: Optional[PrinterFactory] = None
+        self.__template_library: TemplateLibrary | None = None
+        self.__config: dict[str, Any] | None = None
+        self.__config_location: str | None = None
+        self.__renderer: Renderer | None = None
+        self.__printer_factory: PrinterFactory | None = None
         self.__libs_fetched = False
 
     @classmethod

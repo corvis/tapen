@@ -1,18 +1,19 @@
-#    Tapen - software for managing label printers
-#    Copyright (C) 2022 Dmitry Berezovsky
 #
-#    Tapen is free software: you can redistribute it and/or modify
-#    it under the terms of the GNU General Public License as published by
-#    the Free Software Foundation, either version 3 of the License, or
-#    (at your option) any later version.
+# Tapen - software for managing label printers
+# Copyright (C) 2022 Dmitry Berezovsky
 #
-#    Tapen is distributed in the hope that it will be useful,
-#    but WITHOUT ANY WARRANTY; without even the implied warranty of
-#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-#    GNU General Public License for more details.
+# Tapen is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
 #
-#    You should have received a copy of the GNU General Public License
-#    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+# Tapen is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.#
 
 import logging
 from io import BytesIO
@@ -78,7 +79,7 @@ class WeasyprintRenderer(Renderer):
         ensure_dir(str(path))
         return path / file_name
 
-    def __page_config_css(self, tape_params: TapeInfo, width_px: float = None) -> str:
+    def __page_config_css(self, tape_params: TapeInfo, width_px: float | None = None) -> str:
         return PAGE_SIZE_CONFIG_TEMPLATE.format(
             width="{}mm".format(tape_params.width_mm), height="9000px" if width_px is None else str(width_px) + "px"
         )

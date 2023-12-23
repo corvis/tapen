@@ -7,6 +7,7 @@ PYPI_API_KEY :=
 PYPI_REPOSITORY_URL :=
 ALPHA_VERSION :=
 SRC_ROOT := ./src
+FORMAT_PATH := $(SRC_ROOT)
 
 .DEFAULT_GOAL := pre_commit
 
@@ -17,8 +18,10 @@ copyright:
 	@( \
        if [ -z $(SKIP_VENV) ]; then source $(VIRTUAL_ENV_PATH)/bin/activate; fi; \
        echo "Applying copyright..."; \
-       ./development/copyright-update; \
-       echo "DONE: copyright"; \
+       for p in $(FORMAT_PATH); do \
+       	 licenseheaders -t ./development/copyright.tmpl -E ".py" -cy -d $$p; \
+       done; \
+       echo "Done: copyright"; \
     )
 
 flake8:
@@ -68,23 +71,25 @@ build: copyright format lint clean
 	   set -e; \
        if [ -z $(SKIP_VENV) ]; then source $(VIRTUAL_ENV_PATH)/bin/activate; fi; \
        echo "Building wheel package..."; \
-       bash -c "cd src && VERSION_OVERRIDE="$(ALPHA_VERSION)" python ./setup.py bdist_wheel --dist-dir=../dist --bdist-dir=../build"; \
+       poetry build; \
        echo "DONE: wheel package"; \
     )
+
+package:
 	@( \
-	   set -e; \
-       if [ -z $(SKIP_VENV) ]; then source $(VIRTUAL_ENV_PATH)/bin/activate; fi; \
-       echo "Building source distribution..."; \
-       bash -c "cd src && VERSION_OVERRIDE="$(ALPHA_VERSION)" python ./setup.py sdist --dist-dir=../dist"; \
-       echo "DONE: source distribution"; \
-    )
+		echo "Building packages"; \
+		set -e; \
+		if [ -z $(SKIP_VENV) ]; then source $(VIRTUAL_ENV_PATH)/bin/activate; fi; \
+		poetry build; \
+		echo "DONE: Building packages"; \
+	)
 
 single-binary:
 	@( \
 	   set -e; \
        if [ -z $(SKIP_VENV) ]; then source $(VIRTUAL_ENV_PATH)/bin/activate; fi; \
        echo "Building single binary"; \
-       bash -c "pyinstaller --windowed tapen.spec"; \
+       bash -c "pyinstaller tapen.spec"; \
        echo "DONE: wheel package"; \
     )
 
@@ -111,12 +116,32 @@ set-version:
 
 deps:
 	@( \
-		source ./venv/bin/activate; \
-		pip install -r ./requirements-dev.txt; \
+		set -e; \
+		if [ -z $(SKIP_VENV) ]; then source $(VIRTUAL_ENV_PATH)/bin/activate; fi; \
+		poetry install --all-extras --no-root; \
 	)
 
+deps-update:
+	@( \
+		if [ -z $(SKIP_VENV) ]; then source $(VIRTUAL_ENV_PATH)/bin/activate; fi; \
+		poetry lock; \
+	)
+
+deps-lock:
+	@( \
+		if [ -z $(SKIP_VENV) ]; then source $(VIRTUAL_ENV_PATH)/bin/activate; fi; \
+		poetry lock --no-update \
+	)
+
+deps-tree:
+	@( \
+		if [ -z $(SKIP_VENV) ]; then source $(VIRTUAL_ENV_PATH)/bin/activate; fi; \
+		poetry show --tree; \
+	)
+
+.PHONY: venv
 venv:
 	@( \
-		virtualenv $(VIRTUAL_ENV_PATH); \
-		source ./venv/bin/activate; \
+		python3 -m venv $(VIRTUAL_ENV_PATH); \
+		source $(VIRTUAL_ENV_PATH)/bin/activate; \
 	)
