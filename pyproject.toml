@@ -33,7 +33,7 @@ include = [
 
 [tool.poetry.scripts]
 tapen = "tapen.cli:default_entrypoint"
-tpp = "tapen.cli:default_entrypoint"
+tpp = "tapen.cli:tpp_entrypoint"
 
 [tool.poetry.dependencies]
 python = ">=3.10, <3.12"
