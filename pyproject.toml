@@ -21,12 +21,15 @@ classifiers = [
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
 ]
-readme = "README.md"
+readme = "docs/pypi-description.md"
 packages = [
     {include = "ptouch_py", from = "src"},
     {include = "tapen", from = "src"},
 ]
-include = ["tapen/resources/*", "tapen/renderer/resources/*"]
+include = [
+    "tapen/resources/*", "tapen/renderer/resources/*",
+    "LICENSE", "README.md",
+]
 
 [tool.poetry.scripts]
 tapen = "tapen.cli:default_entrypoint"
