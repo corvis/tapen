@@ -17,6 +17,7 @@
 
 import abc
 import argparse
+import copy
 import logging
 import sys
 from enum import Enum
@@ -30,7 +31,7 @@ from cli_rack.utils import none_throws
 from tapen import config, const
 from tapen.__version__ import __version__ as VERSION
 from tapen.common.domain import PrintJob
-from tapen.library import TemplateLibrary
+from tapen.library import TemplateLibrary, STANDARD_LIB_NAME
 from tapen.printer import get_print_factory, PrinterFactory, TapenPrinter
 from tapen.printer.common import PrintingMode, TapeInfo
 from tapen.renderer import get_default_renderer, Renderer
@@ -102,7 +103,13 @@ class BaseCliExtension(CliExtension, metaclass=abc.ABCMeta):
         return config.load_config(args.config, True)
 
     def persist_config(self):
-        config.write_config_file(self.config, Path(none_throws(self.__config_location)))
+        config_obj = copy.deepcopy(self.config)
+        # Do not include standard library into config file
+        libraries = config_obj.get(const.CONF_LIBRARIES, {})
+        if STANDARD_LIB_NAME in libraries:
+            del libraries[STANDARD_LIB_NAME]
+        print(config_obj)
+        config.write_config_file(config_obj, Path(none_throws(self.__config_location)))
 
     @property
     def config(self) -> Dict[str, Any]:
@@ -152,7 +159,12 @@ class ImportLibExtension(BaseCliExtension):
         parser.add_argument(
             "name", type=str, action="store", help="library name (will be used as prefix for templates)"
         )
-        parser.add_argument("url", type=str, action="store", help="library url")
+        parser.add_argument(
+            "url",
+            type=str,
+            action="store",
+            help="library locator e.g local:/your/path/to/lib or github://user/repo@tagorbranch",
+        )
 
     def handle(self, args: argparse.Namespace):
         self.init(args)
