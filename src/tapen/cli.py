@@ -258,7 +258,7 @@ class PrintExtension(BaseCliExtension):
             print_job = PrintJob(template, dict(default=x))
             bitmap = self.renderer.render_bitmap(print_job, none_throws(tape_info))
             if not args.skip_printing:
-                for c in range(args.copies):
+                for _ in range(args.copies):
                     label_num += 1
                     if args.mode == PrintingMode.HALF_CUT:
                         cut_tape = label_num == total_labels  # Cut the last label
@@ -282,8 +282,14 @@ class TppExtension(GlobalArgsExtension):
         self.__printExt.handle(args)
 
 
+def _configure_logger():
+    logging.getLogger("fontTools").setLevel(logging.ERROR)
+    logging.getLogger("PIL").setLevel(logging.INFO)
+
+
 def main(argv: List[str]):
     CLI.setup()
+    _configure_logger()
     CLI.print_info("\nTapen version {}\n".format(VERSION), ansi.Mod.BOLD & ansi.Fg.LIGHT_BLUE)
     app_manager = TapenAppManager("tapen")
     app_manager.parse_and_handle_global()
@@ -307,6 +313,7 @@ def main(argv: List[str]):
 
 def main_tpp(argv: List[str]):
     CLI.setup()
+    _configure_logger()
     app_manager = TapenAppManager("tapen")
     app_manager.parse_and_handle_global()
     app_manager.register_global_args_extension(TppExtension)
