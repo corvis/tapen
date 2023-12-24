@@ -1003,6 +1003,21 @@ doc = ["sphinx", "sphinx_rtd_theme"]
 test = ["flake8", "isort", "pytest"]
 
 [[package]]
+name = "python-poppler"
+version = "0.4.1"
+description = "A Python binding to poppler-cpp"
+optional = false
+python-versions = ">=3.6"
+files = [
+    {file = "python_poppler-0.4.1.tar.gz", hash = "sha256:e6ca5c23ec02350bf2cef85a6bf9f1b261796436db478176f9d24fb14eeecc6a"},
+]
+
+[package.extras]
+dev = ["black", "flake8", "flake8-bugbear"]
+doc = ["gph-import", "sphinx", "sphinx-issues", "sphinx-material"]
+test = ["pytest"]
+
+[[package]]
 name = "pyusb"
 version = "1.2.1"
 description = "Python USB access module"
@@ -1465,4 +1480,4 @@ test = ["pytest"]
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.10, <3.12"
-content-hash = "81bf529cb63a933fe4f32f4e9b197433d26e68748df071c5c23ed1b456404ef5"
+content-hash = "52a5d6c4f01e28841dd08e14d79a1c073a1759740abc8a4282ff05ab7ae4a29c"

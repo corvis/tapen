@@ -20,6 +20,7 @@ from io import BytesIO
 from pathlib import Path
 from typing import Optional
 
+import poppler
 import weasyprint as wp
 from PIL import Image
 from cli_rack.utils import ensure_dir
@@ -44,8 +45,9 @@ BASE_TEMPLATE = """
 """
 
 PAGE_SIZE_CONFIG_TEMPLATE = """
-@page tape {{
+@page {{
     margin: 0;
+    padding: 0;
     size: {height} {width}; 
 }}
 """
@@ -62,11 +64,14 @@ body {{
 
 LOGGER = logging.getLogger("renderer.weasyprint")
 
+DEFAULT_RENDERER_DPI = 96
+
 
 class WeasyprintRenderer(Renderer):
     def __init__(self, template_processor: TemplateProcessor) -> None:
         super().__init__()
         self.template_processor = template_processor
+        self.pdf_page_renderer = poppler.PageRenderer()
 
     def __get_resource_path(self, name: str):
         path = RESOURCES_DIR / name
@@ -127,8 +132,19 @@ class WeasyprintRenderer(Renderer):
             calculated_width_px = self.__find_body_width(rendered_label.pages[0])
             page_config = self.__page_config_css(tape_params, calculated_width_px)
         rendered_label = html.render(stylesheets=stylesheets + [wp.CSS(string=page_config)])
-        result_png = BytesIO()
-        rendered_label.write_png(result_png, resolution=dpi)
+        result_pdf, result_png = BytesIO(), BytesIO()
+        rendered_label.write_pdf(result_pdf, zoom=dpi / DEFAULT_RENDERER_DPI, dpi=dpi)
+        result_pdf.seek(0)
+        pdf = poppler.load(result_pdf)
+        rendered_image = self.pdf_page_renderer.render_page(pdf.create_page(0))
+        pil_image = Image.frombytes(
+            "RGBA",
+            (rendered_image.width, rendered_image.height),
+            rendered_image.data,
+            "raw",
+            str(rendered_image.format),
+        )
+        pil_image.save(result_png, format="png")
         result_png.flush()
         result_png.seek(0)
         self.job_num += 1

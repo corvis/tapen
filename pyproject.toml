@@ -44,6 +44,7 @@ weasyprint="~=60.2"
 pyyaml = ">=5.0.0"
 appdirs = ">=1.4.4"
 jinja2 = ">=3.0.0, <4.0.0"
+python-poppler = "~=0.4.1"
 
 [tool.poetry.dev-dependencies]
 # Dev tools
@@ -103,6 +104,6 @@ follow_imports = "silent"
 ignore_missing_imports = true
 
 [[tool.mypy.overrides]]
-module = ["weasyprint.*", "cli_rack_validation.*", "cli_rack.*", "usb.*", "appdirs.*"]
+module = ["weasyprint.*", "cli_rack_validation.*", "cli_rack.*", "usb.*", "appdirs.*", "poppler.*"]
 ignore_missing_imports = true
 follow_imports = "skip"
