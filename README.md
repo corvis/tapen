@@ -49,8 +49,10 @@ tpp -q 2 "Label 1" "Label 2"
 
 There are a couple of possible installation methods:
 
-1. With pip: `pip install tapen`
-2. Use pre-compiled binary. Just download binary from [releases page](https://github.com/corvis/tapen/releases)
+1. With [pipx](https://pipx.pypa.io/stable/) (recommended, works for all platforms): `pipx install tapen`  
+2. With pip: `pip install tapen`
+3. Use pre-compiled binary. Just download binary from [releases page](https://github.com/corvis/tapen/releases). At the moment only linux x64 binary 
+is available.
 
 ## Usage guide
 
