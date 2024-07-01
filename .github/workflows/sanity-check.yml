@@ -20,7 +20,7 @@ jobs:
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip wheel
-        pip install -r requirements-dev.txt
+        make deps NO_VENV=True
       
     - name: Lint with flake8
       run: make lint NO_VENV=True
