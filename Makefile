@@ -16,8 +16,7 @@ POETRY_GROUPS := dev
 
 .DEFAULT_GOAL := pre_commit
 
-pre_commit: copyright format lint
-setup: venv deps
+pre_commit: pre_commit_hook lint
 
 UNAME_S := $(shell uname -s)
 
@@ -31,6 +30,23 @@ define activate_venv
   if [ -z $(SKIP_VENV) ]; then source $(VIRTUAL_ENV_PATH)/bin/activate; fi;
 endef
 
+pre_commit_hook:
+	@( \
+		$(call activate_venv) \
+		pre-commit run --all --hook-stage=commit; \
+	)
+
+verify-prerequisites:
+	@(development/ensure-dependencies.sh)
+
+setup: verify-prerequisites venv deps
+	@( \
+		$(call activate_venv) \
+		pre-commit install; \
+		echo "Pre-commit hooks installed"; \
+		./development/install-cli-commands.sh "$(VIRTUAL_ENV_PATH)" "$(SRC_ROOT)"; \
+		echo "DONE: setup"; \
+	)
 
 copyright:
 	@( \

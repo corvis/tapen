@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 #
 # Tapen - software for managing label printers
 # Copyright (C) 2022 Dmitry Berezovsky
@@ -15,5 +16,13 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
+import re
+import sys
 
-__version__ = "0.2.0"
+sys.path.append("$SRC_DIR")
+
+from tapen import cli
+
+if __name__ == "__main__":
+    sys.argv[0] = re.sub(r"(-script\.pyw|\.exe)?$", "", sys.argv[0])
+    sys.exit(cli.tpp_entrypoint())

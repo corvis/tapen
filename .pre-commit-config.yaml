@@ -1,0 +1,53 @@
+---
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.6.0
+    hooks:
+      - id: debug-statements
+        name: Detect accidentally committed debug statements
+      - id: check-executables-have-shebangs
+        name: Check that executables have shebang
+      - id: check-merge-conflict
+        name: Check that merge conflicts are not being committed
+      - id: end-of-file-fixer
+        name: Make sure that there is an empty line at the end
+        exclude: data/.*|test
+  - repo: https://github.com/adrienverge/yamllint
+    rev: v1.35.0
+    hooks:
+      - id: yamllint
+        name: Check YAML files with yamllint
+  - repo: local
+    hooks:
+      - name: Ruff Fix
+        id: ruff-fix
+        language: system
+        pass_filenames: true
+        stages: [ pre-commit ]
+        types: [ file, python ]
+        entry: ruff
+        args: [ "check", "--select", "I,UP", "--fix" ]
+      - name: Ruff Format
+        id: ruff-format
+        language: system
+        pass_filenames: true
+        stages: [ pre-commit ]
+        types: [ file, python ]
+        entry: ruff
+        args: [ "format" ]
+  - repo: local
+    hooks:
+      - name: Poetry Check
+        id: check-poetry
+        language: system
+        pass_filenames: false
+        stages: [ pre-commit ]
+        entry: poetry@2 check
+  - repo: local
+    hooks:
+      - name: Apply copyright
+        id: apply-copyright
+        language: script
+        pass_filenames: true
+        stages: [ pre-commit ]
+        entry: development/apply-copyright.sh
