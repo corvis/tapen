@@ -21,7 +21,7 @@ from pathlib import Path
 
 from cli_rack.utils import ensure_dir
 from PIL import Image
-import poppler
+import pymupdf
 import weasyprint as wp
 
 from tapen.common.domain import PrintJob
@@ -39,7 +39,7 @@ BASE_TEMPLATE = """
     <meta charset="UTF-8">
 </head>
 <body>
-    <div class="label">{content}</div>
+    <div class="label" style="white-space: nowrap;">{content}</div>
 </body>
 </html>
 """
@@ -73,7 +73,6 @@ class WeasyprintRenderer(Renderer):
     def __init__(self, template_processor: TemplateProcessor) -> None:
         super().__init__()
         self.template_processor = template_processor
-        self.pdf_page_renderer = poppler.PageRenderer()
 
     def __get_resource_path(self, name: str):
         path = RESOURCES_DIR / name
@@ -137,17 +136,10 @@ class WeasyprintRenderer(Renderer):
         rendered_label = html.render(stylesheets=stylesheets + [wp.CSS(string=page_config)])
         result_pdf, result_png = BytesIO(), BytesIO()
         rendered_label.write_pdf(result_pdf, zoom=dpi / DEFAULT_RENDERER_DPI, dpi=dpi)
-        result_pdf.seek(0)
-        pdf = poppler.load(result_pdf)
-        rendered_image = self.pdf_page_renderer.render_page(pdf.create_page(0))
-        pil_image = Image.frombytes(
-            "RGBA",
-            (rendered_image.width, rendered_image.height),
-            rendered_image.data,
-            "raw",
-            str(rendered_image.format),
-        )
-        pil_image.save(result_png, format="png")
+        pdf = pymupdf.open(stream=result_pdf.getvalue(), filetype="pdf")
+        pixmap = pdf.load_page(0).get_pixmap(alpha=True)
+        result_png.write(pixmap.tobytes("png"))
+        pdf.close()
         result_png.flush()
         result_png.seek(0)
         self.job_num += 1
