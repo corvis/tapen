@@ -36,59 +36,102 @@ tapen = "tapen.cli:default_entrypoint"
 tpp = "tapen.cli:tpp_entrypoint"
 
 [tool.poetry.dependencies]
-python = ">=3.10, <3.12"
+python = ">=3.11,<3.16"
 # PTouch
-pyusb = "~1.2.1"
-Pillow = ">=9.1.0"
+pyusb = "~1.3.1"
+Pillow = ">=12.3.0"
 
 # Tapen
-cli-rack = { version = "~1.0.1", extras=["validation"] }
-weasyprint="~=60.2"
+cli-rack = { version = "~1.2.0", extras=["validation"] }
+weasyprint="~=70.0"
 pyyaml = ">=5.0.0"
 appdirs = ">=1.4.4"
 jinja2 = ">=3.0.0, <4.0.0"
-python-poppler = "~=0.4.1"
+# python-poppler = "~=0.4.1"
 
-[tool.poetry.dev-dependencies]
+[tool.poetry.group.dev.dependencies]
 # Dev tools
-black = "~=22.3"
+ruff = ">=0.15.7"
 licenseheaders = "~=0.8"
-flake8 = "~=4.0"
-isort = "~=5.11"
 mypy = ">=1.0.1"
-pre-commit = "~=2.19"
-commitizen = "~=2.42.1"
+pre-commit = "~=4.6.2"
 mistune = ">=3.0.0"
-pyinstaller = "~=6.3"
+pyinstaller = "~=6.22.2"
+commitizen = ">=3.16.0"
 
 # Type checking
 types-PyYAML = ">=5.0.0"
 types-Pillow = ">=10.0.0"
 
-[tool.black]
-line-length = 120
-target-version = ['py311']
-exclude = '''
-(
-  /(
-      \.eggs         # exclude a few common directories in the
-    | \.git          # root of the project
-    | \.mypy_cache
-    | \.tox
-    | \.venv
-    | _build
-    | buck-out
-    | build
-    | dist
-  )/
-)
-'''
+[tool.commitizen]
+version_provider = "poetry"
+bump_version = "bump: version $current_version → $new_version"
+update_changelog_on_bump = true
+pre_bump_hooks = []
+version_files = [
+    "src/tapen/__version__.py",
+]
 
-[tool.isort]
-profile = "black"
-line_length = 120
-force_sort_within_sections = "true"
-atomic = "true"
+[tool.ruff]
+line-length = 120
+target-version = "py311"
+exclude = [".*pyi"]
+
+[tool.ruff.lint.isort]
+known-third-party = []
+force-sort-within-sections = true
+
+[tool.ruff.lint.per-file-ignores]
+"**.pyi" = ["UP"]
+"test_*.py" = ["D103", "D104", "D100", "D101", "D102", "D106"]
+"__version__.py" = ["D104", "D100", "D101", "D102"]
+
+[tool.ruff.lint]
+extend-ignore = [
+    "S101",  # Use of assert statement. We have a lot of asserts for mypy type checking.
+    "S324", # We cannot ignore sha1 hash in codebase because it is used by box.com
+
+    # Target to resolve:
+    "S113", # Requests without timout. We need to fix this, but it is not a blocker.
+        # D202 No blank lines allowed after function docstring
+    "D202",
+    # W504 line break after binary operator
+    ##### DOCSTRINGS #####
+    # Missing docstring in public module
+    "D100",
+    # Missing docstring in __init__
+    "D107",
+    # Missing docstring in magic method
+    "D105",
+    # Missing docstring in public package
+    "D104",
+    # Missing docstring in public nested class
+    "D106",
+    # One black line required before class docstring
+    "D203",
+    #`no-blank-line-before-class
+    "D211",
+    # Multi-line docstring summary should start at the second line
+    "D212",
+    # Multi-line docstring summary should start at the first line
+    "D213",
+    # Raw string in exception
+    "EM101",
+    # f-string in exception
+    "EM102",
+]
+extend-select = ["S","E", "B", "A", "EM", "UP", "D", "C90"]
+
+[tool.ruff.lint.flake8-type-checking]
+# Add quotes around type annotations, if doing so would allow
+# an import to be moved into a type-checking block.
+quote-annotations = true
+
+[tool.ruff.lint.pydocstyle]
+convention = "pep257"
+
+[tool.ruff.lint.mccabe]
+max-complexity = 10
 
 [tool.mypy]
 python_version = "3.11"

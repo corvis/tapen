@@ -16,18 +16,17 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.#
 
 import datetime
-import os
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any
 
-from cli_rack.loader import DefaultLoaderRegistry, LoadedDataMeta, InvalidPackageStructure, LoaderRegistry
+from cli_rack.loader import DefaultLoaderRegistry, InvalidPackageStructure, LoadedDataMeta
 from cli_rack.utils import ensure_dir
+from cli_rack_validation import crv
 
 from tapen import config, const, validate
 from tapen.common.domain import Template
 from tapen.library.loader import LibraryLoader
 from tapen.utils import yaml_file_to_dict
-from cli_rack_validation import crv
 
 MANIFEST_FILE_NAME = "manifest.yaml"
 STANDARD_LIB_NAME = "std"
@@ -58,19 +57,21 @@ MANIFEST_SCHEMA = crv.Schema(
 )
 
 
-class TemplateLibrary(object):
-    def __init__(self, library_config: Dict[str, Any], always_reload_local_libs=False) -> None:
-        self.__lib_config: Dict[str, Any] = library_config
+class TemplateLibrary:
+    """Template library registry and loader."""
+
+    def __init__(self, library_config: dict[str, Any], always_reload_local_libs=False) -> None:
+        self.__lib_config: dict[str, Any] = library_config
         self.lib_loader = DefaultLoaderRegistry.clone()
         self.lib_loader.target_dir = Path(config.app_dirs.user_data_dir) / "lib-cache"
-        self.lib_root_dirs: List[str] = [""]
+        self.lib_root_dirs: list[str] = [""]
         local_loader = self.lib_loader.get_for_locator("local:nothing")
         if always_reload_local_libs and local_loader:
             local_loader.reload_interval = datetime.timedelta(seconds=0)  # force reload for local repo
         self.loader = DefaultLoaderRegistry.clone()
         self.loader.target_dir = Path(config.app_dirs.user_data_dir) / "lib-cache"
         ensure_dir(str(self.loader.target_dir))
-        self.libraries: Dict[str, LoadedDataMeta] = {}
+        self.libraries: dict[str, LoadedDataMeta] = {}
         self.loader.register(LibraryLoader(self.libraries, self.loader, target_dir=self.loader.target_dir))
 
     def _lib_dir_resolver(self, meta: LoadedDataMeta) -> str:
@@ -82,25 +83,29 @@ class TemplateLibrary(object):
         )
 
     def fetch_libraries(self):
+        """Load all configured template libraries."""
         self.libraries.clear()
         self.add_library(STANDARD_LIB_NAME, "local:" + str(STANDARD_LIB_PATH))
         for name, url in self.__lib_config.items():
             self.add_library(name, url)
 
     def add_library(self, name: str, url: str, force_reload=False):
+        """Add and load a template library by name."""
         if name not in self.__lib_config:
             self.__lib_config[name] = url
         if name not in self.libraries or force_reload:
             self.libraries[name] = self.lib_loader.load(url, self._lib_dir_resolver)
 
     def load_template(self, locator: str) -> Template:
+        """Load and validate a template by locator."""
         meta = self.loader.load(locator)
         template_dir = Path(meta.path) / meta.target_path
         manifest_file = template_dir / MANIFEST_FILE_NAME
         if not manifest_file.is_file():
             raise ValueError(
-                "Missing manifest file for template {}. Check your template library and ensure it has valid structure."
-                "\n\tCache location: {}".format(locator, meta.path)
+                f"Missing manifest file for template {locator}. Check your template library and ensure it has valid "
+                "structure."
+                f"\n\tCache location: {meta.path}"
             )
         manifest_dict = yaml_file_to_dict(manifest_file)
         manifest_dict = MANIFEST_SCHEMA(manifest_dict)

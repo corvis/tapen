@@ -15,33 +15,35 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.#
 
+from collections.abc import Callable
 import logging
 import os
-from typing import Optional, Dict, Union, Callable
 
-from cli_rack.loader import BaseLoader, BaseLocatorDef, LoaderRegistry, LoadedDataMeta, LoaderError
+from cli_rack.loader import BaseLoader, BaseLocatorDef, LoadedDataMeta, LoaderError, LoaderRegistry
 
 
 class LibraryLocatorDef(BaseLocatorDef):
+    """Locator definition for templates inside a named library."""
+
     PREFIX = ""
     TYPE = "lib"
     PATH_SEPARATOR = ":"
 
-    def __init__(
-        self, repo_name: str, path: str, name: Optional[str] = None, original_locator: Optional[str] = None
-    ) -> None:
+    def __init__(self, repo_name: str, path: str, name: str | None = None, original_locator: str | None = None) -> None:
         self.repo_name = repo_name
         self.path = path
         self.name = name if name is not None else self.__generate_name()
         super().__init__(name, original_locator)
 
     def to_dict(self) -> dict:
+        """Serialize the locator definition to a dictionary."""
         result = super().to_dict()
-        result.update(dict(repo_name=self.repo_name, path=self.path, name=self.name))
+        result.update({"repo_name": self.repo_name, "path": self.path, "name": self.name})
         return result
 
     @classmethod
     def from_dict(cls, locator_dict: dict):
+        """Create a locator definition from a dictionary."""
         return cls(
             locator_dict["repo_name"], locator_dict["path"], locator_dict["name"], locator_dict.get("original_locator")
         )
@@ -51,10 +53,12 @@ class LibraryLocatorDef(BaseLocatorDef):
 
 
 class LibraryLoader(BaseLoader):
+    """Loader that resolves templates from previously loaded libraries."""
+
     LOCATOR_CLS = LibraryLocatorDef
 
     def __init__(
-        self, repos: Dict[str, LoadedDataMeta], package_loader: LoaderRegistry, target_dir="tmp/external"
+        self, repos: dict[str, LoadedDataMeta], package_loader: LoaderRegistry, target_dir="tmp/external"
     ) -> None:
         super().__init__(logging.getLogger("loader.lib"), target_dir)
         self.libraries = repos
@@ -62,7 +66,8 @@ class LibraryLoader(BaseLoader):
         self.reload_interval = None  # Disable cache
 
     @classmethod
-    def locator_to_locator_def(cls, locator_str: Union[str, BaseLocatorDef]) -> LibraryLocatorDef:
+    def locator_to_locator_def(cls, locator_str: str | BaseLocatorDef) -> LibraryLocatorDef:
+        """Convert a locator string or object into a library locator."""
         if isinstance(locator_str, str):
             # Parse locator
             locator_components = locator_str.split(cls.LOCATOR_CLS.PATH_SEPARATOR, 1)
@@ -73,35 +78,33 @@ class LibraryLoader(BaseLoader):
         elif isinstance(locator_str, LibraryLocatorDef):
             return locator_str
         else:
-            raise ValueError(
-                "Locator should be either locator string or LibraryLocatorDef got {}".format(
-                    locator_str.__class__.__name__
-                )
+            raise TypeError(
+                f"Locator should be either locator string or LibraryLocatorDef got {locator_str.__class__.__name__}"
             )
 
     @classmethod
-    def can_handle(cls, locator: Union[str, BaseLocatorDef]) -> bool:
+    def can_handle(cls, locator: str | BaseLocatorDef) -> bool:
+        """Return whether this loader can handle a locator."""
         if isinstance(locator, str):
             return True
         elif isinstance(locator, BaseLocatorDef):
             return cls.LOCATOR_CLS == locator.__class__
         else:
-            raise ValueError(
-                "Locator must be either string or subclass of BaseLocatorDef, but {} given".format(
-                    locator.__class__.__name__
-                )
+            raise TypeError(
+                f"Locator must be either string or subclass of BaseLocatorDef, but {locator.__class__.__name__} given"
             )
 
     def load(
         self,
-        locator_: Union[str, BaseLocatorDef],
-        target_path_resolver: Optional[Callable[[LoadedDataMeta], str]] = None,
+        locator_: str | BaseLocatorDef,
+        target_path_resolver: Callable[[LoadedDataMeta], str] | None = None,
         force_reload=False,
     ) -> LoadedDataMeta:
+        """Load metadata for a template path inside a library."""
         self._logger.info("Loading " + str(locator_))
         locator = self.locator_to_locator_def(locator_)
         if locator.repo_name not in self.libraries:
-            raise LoaderError("Unable to load {}. Unknown library {}".format(str(locator_), locator.repo_name))
+            raise LoaderError(f"Unable to load {locator_!s}. Unknown library {locator.repo_name}")
         lib_meta = self.libraries[locator.repo_name]
         meta = LoadedDataMeta.from_dict(
             lib_meta.to_dict(), os.path.join(lib_meta.path, lib_meta.target_path), self.package_loader
@@ -112,8 +115,7 @@ class LibraryLoader(BaseLoader):
             other_files = os.listdir(os.path.dirname(full_path))
             alternatives_str = ("\n\tPossible options: " + ", ".join(other_files)) if len(other_files) > 0 else ""
             raise LoaderError(
-                "Invalid path within repository {}. {} doesn't exist.".format(lib_meta.locator, locator.path)
-                + alternatives_str
+                f"Invalid path within repository {lib_meta.locator}. {locator.path} doesn't exist." + alternatives_str
             )
         meta.is_file = os.path.isfile(full_path)
         return meta

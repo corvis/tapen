@@ -17,18 +17,20 @@
 
 import logging
 import time
-from typing import List, Optional
-import usb.core
+
 from PIL.Image import Image
+import usb.core
 
 from ptouch_py import const
-from ptouch_py.domain import DevInfo, PTStatusRaw, PTStatus
+from ptouch_py.domain import DevInfo, PTStatus, PTStatusRaw
 from ptouch_py.registry import SUPPORTED_DEVICES
 
 LOGGER = logging.getLogger("ptouch_py.core")
 
 
-class Printer(object):
+class Printer:
+    """Brother P-touch USB printer connection."""
+
     def __init__(self, usb_dev: usb.core.Device, dev_info: DevInfo) -> None:
         super().__init__()
         assert usb_dev is not None and dev_info is not None, "USB Dev and Dev info MUST be set"
@@ -39,14 +41,17 @@ class Printer(object):
 
     @property
     def serial_number(self) -> str:
+        """Return the USB device serial number."""
         return self.usb_dev.serial_number
 
     @property
     def vendor_name(self) -> str:
+        """Return the USB device manufacturer name."""
         return self.usb_dev.manufacturer
 
     @property
     def product_name(self) -> str:
+        """Return the USB device product name."""
         return self.usb_dev.product
 
     def _pt_send(self, data: bytes):
@@ -57,6 +62,7 @@ class Printer(object):
         assert self.usb_dev.write(0x02, data) == msg_len
 
     def init(self) -> None:
+        """Initialize the USB device for P-touch commands."""
         if self.usb_dev.is_kernel_driver_active(0):
             self.usb_dev.detach_kernel_driver(0)
         self.usb_dev.set_configuration()
@@ -70,6 +76,7 @@ class Printer(object):
         self.__initialized = True
 
     def get_status(self) -> PTStatus:
+        """Read and return the current P-touch status."""
         self._pt_send(const.CMD_STATUS_INFO)
         attempt = 0
         self._pt_send(const.CMD_STATUS_INFO)
@@ -88,6 +95,7 @@ class Printer(object):
         raise ValueError("Unable to read PTouch printer status: timeout")
 
     def print_image(self, image: Image, cut_tape=True):
+        """Print a monochrome image and optionally cut the tape."""
         buffer_size = int(self.info.max_px_buffer / 8)
         # Enable pack bits
         if self.info.packbits:
@@ -107,7 +115,7 @@ class Printer(object):
             self.__send_raster(bytes(raster_line))
         self._pt_send(const.CMD_EJECT if cut_tape else const.CMD_ADVANCE)
 
-    def __rasterline_set_pixel(self, rasterline: List[int], pixel_offset: int) -> None:
+    def __rasterline_set_pixel(self, rasterline: list[int], pixel_offset: int) -> None:
         size = len(rasterline)
         if pixel_offset > size * 8:
             return
@@ -119,14 +127,16 @@ class Printer(object):
         self._pt_send(buffer)
 
     def __str__(self) -> str:
-        return "{} {} (s/n: {}) [USB dev {} / Bus {}]".format(
-            self.vendor_name, self.product_name, self.serial_number, self.usb_dev.address, self.usb_dev.bus
+        return (
+            f"{self.vendor_name} {self.product_name} (s/n: {self.serial_number}) "
+            f"[USB dev {self.usb_dev.address} / Bus {self.usb_dev.bus}]"
         )
 
 
-def find_printers() -> List[Printer]:
-    result: List[Printer] = []
-    devs: List[usb.core.Device] = usb.core.find(find_all=True)
+def find_printers() -> list[Printer]:
+    """Discover supported P-touch printers on USB."""
+    result: list[Printer] = []
+    devs: list[usb.core.Device] = usb.core.find(find_all=True)
     for dev in devs:
         supported_dev = next(
             filter(lambda x: x.vendor_id == dev.idVendor and x.product_id == dev.idProduct, SUPPORTED_DEVICES), None
@@ -137,6 +147,7 @@ def find_printers() -> List[Printer]:
     return result
 
 
-def get_first_printer() -> Optional[Printer]:
+def get_first_printer() -> Printer | None:
+    """Return the first discovered P-touch printer, if any."""
     printers = find_printers()
     return printers[0] if len(printers) > 0 else None

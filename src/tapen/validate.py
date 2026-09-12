@@ -15,11 +15,12 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.#
 
+from collections.abc import Callable
 import re
-from typing import Dict, Callable, Any
+from string import ascii_letters, digits
+from typing import Any
 
 from cli_rack_validation import crv
-from string import ascii_letters, digits
 
 from tapen import const
 
@@ -32,19 +33,21 @@ VALID_PARAM_NAME_REGEX = re.compile(r"^[a-zA-Z_][a-zA-Z0-9_]*([a-zA-Z_][a-zA-Z0-
 
 def valid_param_name(value):
     """
-    Validate that given value is a valid parameter name. It could include latin letters,
-    numbers and symbol _. It also can't start with number
+    Validate that given value is a valid parameter name.
+
+    It could include latin letters, numbers and symbol _. It also can't start with number
     """
     value = crv.string_strict(value)
     if not VALID_PARAM_NAME_REGEX.fullmatch(value):
         raise crv.Invalid(
-            'Invalid name "{}". Name should consist of latin letters, '
-            "numbers symbol _ and can't start with digit".format(value)
+            f'Invalid name "{value}". Name should consist of latin letters, '
+            "numbers symbol _ and can't start with digit"
         )
     return value
 
 
 def valid_id(value):
+    """Validate a user-defined identifier."""
     value = crv.string(value)
     if not value:
         raise crv.Invalid("ID must not be empty")
@@ -57,8 +60,7 @@ def valid_id(value):
         if char not in valid_chars:
             raise crv.Invalid(
                 "IDs must only consist of upper/lowercase characters, the underscore"
-                "character and numbers. The character '{}' cannot be used"
-                "".format(char)
+                f"character and numbers. The character '{char}' cannot be used"
             )
     if value.lower() in RESERVED_IDS:
         raise crv.Invalid(f"ID '{value}' is reserved internally and cannot be used")
@@ -67,12 +69,11 @@ def valid_id(value):
 
 
 def valid_locator(value):
+    """Validate a library or template locator."""
     value = crv.string_strict(value)
     if not VALID_LOCATOR_REGEX.fullmatch(value):
         raise crv.Invalid(
-            'Invalid locator "{}". Locator must include locator prefix separated by colon from the locator body'.format(
-                value
-            )
+            f'Invalid locator "{value}". Locator must include locator prefix separated by colon from the locator body'
         )
     return value
 
@@ -81,7 +82,7 @@ class _ObjectValidators:
     def __init__(self) -> None:
         super().__init__()
         self.__cache_initialized = False
-        self.__cache: Dict[str, Any] = {}
+        self.__cache: dict[str, Any] = {}
 
     def build_cache(self):
         for x in dir(crv):
@@ -116,7 +117,7 @@ class _ObjectValidators:
                 funct = funct(*args)
         return funct
 
-    def create_schema_for_param_def(self, param_def_dict: Dict[str, Dict]) -> crv.Schema:
+    def create_schema_for_param_def(self, param_def_dict: dict[str, dict]) -> crv.Schema:
         res = {}
         for name, cfg in param_def_dict.items():
             default = cfg.get(const.C_DEFAULT, crv.UNDEFINED)
@@ -133,12 +134,12 @@ ObjectValidators = _ObjectValidators()
 
 
 def valid_validator_name(value):
+    """Validate that a configured validator name exists."""
     value = crv.string_strict(value)
     if ObjectValidators.validator_exists(value):
         return value
-    raise crv.Invalid(
-        "Invalid validator name '{}'. Valid options are: {}".format(value, ", ".join(ObjectValidators.validators))
-    )
+    msg = "Invalid validator name '{}'. Valid options are: {}".format(value, ", ".join(ObjectValidators.validators))
+    raise crv.Invalid(msg)
 
 
 validator_def = crv.Schema(
@@ -150,6 +151,7 @@ validator_def = crv.Schema(
 
 
 def ensure_validator_def(value):
+    """Normalize validator shorthand into a validator definition."""
     if isinstance(value, str):
         # If just string - check if it has & operator first
         if COMBINE_OPERATOR in value:
@@ -161,7 +163,7 @@ def ensure_validator_def(value):
 
 
 def ensure_valid_validator(value):
-    """Normalizes validator definition and converts it into validation function"""
+    """Normalize validator definition and convert it into validation function."""
     val_def = ensure_validator_def(value)
     return ObjectValidators.validator_def_to_fn(val_def)
 
@@ -178,9 +180,11 @@ valid_object_def = crv.ensure_schema(
 )
 
 
-def object(**kwargs):
+def object(**kwargs):  # noqa: A001
+    """Build an object validator from keyword parameter definitions."""
     return valid_object_def(kwargs)
 
 
 def object_list(**kwargs):
+    """Build a list validator for object parameter definitions."""
     return crv.ensure_list(object(**kwargs))

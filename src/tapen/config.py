@@ -17,14 +17,14 @@
 
 import logging
 from pathlib import Path
-from typing import Optional, Dict, Any, Tuple
+from typing import Any
 
-import yaml
 from appdirs import AppDirs
 from cli_rack.utils import ensure_dir
 from cli_rack_validation import crv
+import yaml
 
-from tapen import validate, const
+from tapen import const, validate
 
 LOGGER = logging.getLogger("config")
 
@@ -42,28 +42,29 @@ LIBRARIES_SCHEMA = crv.Schema(
 
 CONFIG_SCHEMA = crv.Schema({crv.Required(const.CONF_LIBRARIES, default=[]): LIBRARIES_SCHEMA})
 
-DEFAULT_CONFIG: Dict[str, Any] = {}
+DEFAULT_CONFIG: dict[str, Any] = {}
 DEFAULT_CONFIG_FILE_NAME = "conf.yaml"
 
 
-def read_config(p: Path, allow_create=True) -> Dict[str, Any]:
+def read_config(p: Path, allow_create=True) -> dict[str, Any]:
+    """Read and validate a configuration file."""
     if not p.is_file():
         if allow_create:
             LOGGER.info("Config file doesn't exist. Generating new config...")
             validated_config = CONFIG_SCHEMA(DEFAULT_CONFIG)
             ensure_dir(str(p.parent))
             write_config_file(validated_config, p)
-            LOGGER.info("\tPersisted at: {}".format(p))
+            LOGGER.info(f"\tPersisted at: {p}")
         else:
             raise ValueError("Config file doesn't exists: " + str(p.absolute()))
     else:
-        with open(p, "r") as f:
-            yaml_dict = yaml.load(f, Loader=yaml.FullLoader)
+        with open(p) as f:
+            yaml_dict = yaml.safe_load(f)
         validated_config = CONFIG_SCHEMA(yaml_dict)
     return __normalize_config(validated_config)
 
 
-def __normalize_config(conf: Dict[str, Any]) -> Dict[str, Any]:
+def __normalize_config(conf: dict[str, Any]) -> dict[str, Any]:
     # Libraries: Standardize representation (convert to dict form)
     libraries = conf.get(const.CONF_LIBRARIES)
     if isinstance(libraries, list):
@@ -77,12 +78,14 @@ def __normalize_config(conf: Dict[str, Any]) -> Dict[str, Any]:
     return conf
 
 
-def write_config_file(config: Dict[str, Any], p: Path):
+def write_config_file(config: dict[str, Any], p: Path):
+    """Write configuration data to a YAML file."""
     with open(p, "w") as f:
         yaml.dump(config, f)
 
 
-def load_config(location_override: Optional[str] = None, allow_create=True) -> Tuple[str, Dict[str, Any]]:
+def load_config(location_override: str | None = None, allow_create=True) -> tuple[str, dict[str, Any]]:
+    """Load configuration from an override or default search path."""
     if location_override is not None:
         return location_override, read_config(Path(location_override), allow_create)
     search_locations = [Path(DEFAULT_CONFIG_FILE_NAME), Path(app_dirs.user_config_dir) / DEFAULT_CONFIG_FILE_NAME]

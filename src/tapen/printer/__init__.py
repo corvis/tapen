@@ -15,27 +15,30 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.#
 
-from typing import List, Optional
-
 from tapen.printer.brother import PTouchFactory
-from tapen.printer.common import PrinterFactory, TapenPrinter, TapeInfo
+from tapen.printer.common import PrinterFactory, TapeInfo, TapenPrinter
 
-__DEFAULT_PRINT_FACTORY: Optional["DefaultPrinterFactory"] = None
+__DEFAULT_PRINT_FACTORY: PrinterFactory | None = None
 
 
 class DefaultPrinterFactory(PrinterFactory):
-    def get_cached_tape_info(self, printer_id: Optional[str] = None) -> Optional[TapeInfo]:
+    """Default printer factory backed by Brother P-touch discovery."""
+
+    def get_cached_tape_info(self, printer_id: str | None = None) -> TapeInfo | None:
+        """Return cached tape information for a Brother printer."""
         return self.__ptouch_fectory.get_cached_tape_info(printer_id)
 
     def __init__(self) -> None:
         super().__init__()
         self.__ptouch_fectory = PTouchFactory()
 
-    def discover_printers(self) -> List[TapenPrinter]:
+    def discover_printers(self) -> list[TapenPrinter]:
+        """Discover available Brother P-touch printers."""
         return self.__ptouch_fectory.discover_printers()
 
 
 def get_print_factory() -> PrinterFactory:
+    """Return the process-wide default printer factory."""
     global __DEFAULT_PRINT_FACTORY
     if __DEFAULT_PRINT_FACTORY is None:
         __DEFAULT_PRINT_FACTORY = DefaultPrinterFactory()

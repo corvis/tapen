@@ -18,11 +18,11 @@
 import abc
 import argparse
 import copy
-import logging
-import sys
 from enum import Enum
+import logging
 from pathlib import Path
-from typing import List, Dict, Any, Optional, Tuple
+import sys
+from typing import Any
 
 from cli_rack import CLI, ansi
 from cli_rack.modular import CliAppManager, CliExtension, GlobalArgsExtension
@@ -31,18 +31,16 @@ from cli_rack.utils import none_throws
 from tapen import config, const
 from tapen.__version__ import __version__ as VERSION
 from tapen.common.domain import PrintJob
-from tapen.library import TemplateLibrary, STANDARD_LIB_NAME
-from tapen.printer import get_print_factory, PrinterFactory, TapenPrinter
+from tapen.library import STANDARD_LIB_NAME, TemplateLibrary
+from tapen.printer import PrinterFactory, TapenPrinter, get_print_factory
 from tapen.printer.common import PrintingMode, TapeInfo
-from tapen.renderer import get_default_renderer, Renderer
+from tapen.renderer import Renderer, get_default_renderer
 
 LOGGER = logging.getLogger("cli")
 
 
 class EnumAction(argparse.Action):
-    """
-    Argparse action for handling Enums
-    """
+    """Argparse action for handling enums."""
 
     def __init__(self, **kwargs):
         # Pop off the type value
@@ -57,23 +55,29 @@ class EnumAction(argparse.Action):
         # Generate choices from the Enum
         kwargs.setdefault("choices", tuple(e.value for e in enum_type))
 
-        super(EnumAction, self).__init__(**kwargs)
+        super().__init__(**kwargs)
 
         self._enum = enum_type
 
     def __call__(self, parser, namespace, values, option_string=None):
+        """Store the parsed enum value on the argparse namespace."""
         # Convert value back into an Enum
         value = self._enum(values)
         setattr(namespace, self.dest, value)
 
 
 class GlobalConfigFile(GlobalArgsExtension):
+    """Global extension that adds the config file argument."""
+
     @classmethod
     def setup_parser(cls, parser: argparse.ArgumentParser):
+        """Configure global config-file CLI arguments."""
         parser.add_argument("-c", "--config", type=str, action="store", help="Config file location", default=None)
 
 
 class TapenAppManager(CliAppManager):
+    """Application manager configured for Tapen commands."""
+
     def __init__(
         self,
         prog_name: str = "tapen",
@@ -89,6 +93,8 @@ class TapenAppManager(CliAppManager):
 
 
 class BaseCliExtension(CliExtension, metaclass=abc.ABCMeta):
+    """Base class for Tapen CLI extensions."""
+
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
         self.__template_library: TemplateLibrary | None = None
@@ -99,10 +105,12 @@ class BaseCliExtension(CliExtension, metaclass=abc.ABCMeta):
         self.__libs_fetched = False
 
     @classmethod
-    def load_config(cls, args: argparse.Namespace) -> Tuple[str, Dict[str, Any]]:
+    def load_config(cls, args: argparse.Namespace) -> tuple[str, dict[str, Any]]:
+        """Load the application configuration for CLI arguments."""
         return config.load_config(args.config, True)
 
     def persist_config(self):
+        """Write the current configuration to disk."""
         config_obj = copy.deepcopy(self.config)
         # Do not include standard library into config file
         libraries = config_obj.get(const.CONF_LIBRARIES, {})
@@ -112,50 +120,58 @@ class BaseCliExtension(CliExtension, metaclass=abc.ABCMeta):
         config.write_config_file(config_obj, Path(none_throws(self.__config_location)))
 
     @property
-    def config(self) -> Dict[str, Any]:
+    def config(self) -> dict[str, Any]:
+        """Return the initialized application configuration."""
         assert self.__config is not None, "Class is not initialized. Forgot self.init()?"
         return self.__config
 
     def init(self, args: argparse.Namespace):
+        """Initialize shared CLI dependencies from parsed arguments."""
         self.__config_location, self.__config = self.load_config(args)
         self.__renderer = get_default_renderer()
         if args.debug:
             self.__renderer.persist_rendered_image_as_file = True
         self.__printer_factory = get_print_factory()
-        self.__template_library = TemplateLibrary(
-            self.config.get(const.CONF_LIBRARIES), always_reload_local_libs=args.debug  # type: ignore
-        )
+        libraries: dict[str, Any] = self.config.get(const.CONF_LIBRARIES, {})
+        self.__template_library = TemplateLibrary(libraries, always_reload_local_libs=args.debug)
 
     @property
     def template_library(self) -> TemplateLibrary:
-        assert (
-            self.__printer_factory is not None and self.__template_library is not None
-        ), "Class is not initialized. Forgot self.init()?"
+        """Return the initialized template library."""
+        assert self.__printer_factory is not None and self.__template_library is not None, (
+            "Class is not initialized. Forgot self.init()?"
+        )
         if not self.__libs_fetched:
             self.__template_library.fetch_libraries()
         return self.__template_library
 
     @property
     def renderer(self) -> Renderer:
+        """Return the renderer instance."""
         if self.__renderer is None:
             self.__renderer = get_default_renderer()
         return self.__renderer
 
-    def get_printer(self) -> Optional[TapenPrinter]:
+    def get_printer(self) -> TapenPrinter | None:
+        """Return the first discovered printer, if available."""
         assert self.__printer_factory is not None, "Class is not initialized. Forgot self.init()?"
         return self.__printer_factory.get_first_printer()
 
-    def get_cached_tape_info(self, printer_id: Optional[str] = None) -> Optional[TapeInfo]:
+    def get_cached_tape_info(self, printer_id: str | None = None) -> TapeInfo | None:
+        """Return cached tape information for a printer."""
         assert self.__printer_factory is not None, "Class is not initialized. Forgot self.init()?"
         return self.__printer_factory.get_cached_tape_info(printer_id)
 
 
 class ImportLibExtension(BaseCliExtension):
+    """CLI extension for importing template libraries."""
+
     COMMAND_NAME = "import-lib"
     COMMAND_DESCRIPTION = "Appends new template library to the list of known libraries"
 
     @classmethod
     def setup_parser(cls, parser: argparse.ArgumentParser):
+        """Configure arguments for importing a template library."""
         parser.add_argument(
             "name", type=str, action="store", help="library name (will be used as prefix for templates)"
         )
@@ -167,21 +183,25 @@ class ImportLibExtension(BaseCliExtension):
         )
 
     def handle(self, args: argparse.Namespace):
+        """Import a template library into the configuration."""
         self.init(args)
-        CLI.print_info('Adding library "{}" (endpoint {})...'.format(args.name, args.url))
+        CLI.print_info(f'Adding library "{args.name}" (endpoint {args.url})...')
         self.template_library.add_library(args.name, args.url)
         self.config.get(const.CONF_LIBRARIES)[args.name] = args.url  # type:ignore
         self.persist_config()
-        CLI.print_info("Library {} has been added to config file".format(args.name))
+        CLI.print_info(f"Library {args.name} has been added to config file")
 
 
 class PrintExtension(BaseCliExtension):
+    """CLI extension for rendering and printing labels."""
+
     COMMAND_NAME = "print"
     COMMAND_DESCRIPTION = "Renders and prints given data"
     DEFAULT_TEMPLATE_NAME = "std:default"
 
     @classmethod
     def setup_parser(cls, parser: argparse.ArgumentParser):
+        """Configure arguments for rendering and printing labels."""
         parser.add_argument(
             "-m",
             "--mode",
@@ -221,7 +241,8 @@ class PrintExtension(BaseCliExtension):
     def __is_template_name(self, name: str) -> bool:
         return ":" in name
 
-    def handle(self, args: argparse.Namespace):
+    def handle(self, args: argparse.Namespace):  # noqa: C901
+        """Render and optionally print labels from CLI arguments."""
         self.init(args)
         template_name = args.template
         data = args.data
@@ -233,29 +254,29 @@ class PrintExtension(BaseCliExtension):
         printer = self.get_printer()
         if printer is None and not args.skip_printing:
             CLI.print_error("Printer is not connected.")
-            exit(1)
+            sys.exit(1)
         else:
             if printer is not None:
-                CLI.print_info("Detected printer: {}".format(printer))
+                CLI.print_info(f"Detected printer: {printer}")
                 printer.init()
         tape_info = self.get_cached_tape_info()
         if tape_info is None or args.force_tape_detection:
             if not args.skip_printing or args.force_tape_detection:
                 printer_status = none_throws(printer).get_status()
-                CLI.print_info("\tTape: {}".format(printer_status.tape_info))
+                CLI.print_info(f"\tTape: {printer_status.tape_info}")
                 tape_info = printer_status.tape_info
             else:
                 if args.skip_printing:
                     CLI.print_error("Tape information is not available in cache. Skip printing mode is not available")
-                    exit(2)
+                    sys.exit(2)
         else:
-            CLI.print_info("Assuming tape {}".format(tape_info))
+            CLI.print_info(f"Assuming tape {tape_info}")
         label_num = 0
         if len(data) == 0:
             data = [None]
         total_labels = len(data) * args.copies
-        for i, x in enumerate(data):
-            print_job = PrintJob(template, dict(default=x))
+        for x in data:
+            print_job = PrintJob(template, {"default": x})
             bitmap = self.renderer.render_bitmap(print_job, none_throws(tape_info))
             if not args.skip_printing:
                 for _ in range(args.copies):
@@ -270,15 +291,19 @@ class PrintExtension(BaseCliExtension):
 
 
 class TppExtension(GlobalArgsExtension):
-    def __init__(self, app_manager: Optional["CliAppManager"] = None) -> None:
+    """Global extension for the legacy `tpp` entrypoint."""
+
+    def __init__(self, app_manager: CliAppManager | None = None) -> None:
         super().__init__(app_manager)
         self.__printExt = PrintExtension()
 
     @classmethod
     def setup_parser(cls, parser: argparse.ArgumentParser):
+        """Configure print arguments for the `tpp` entrypoint."""
         PrintExtension.setup_parser(parser)
 
     def handle(self, args):
+        """Delegate handling to the print extension."""
         self.__printExt.handle(args)
 
 
@@ -287,10 +312,11 @@ def _configure_logger():
     logging.getLogger("PIL").setLevel(logging.INFO)
 
 
-def main(argv: List[str]):
+def main(argv: list[str]):
+    """Run the main Tapen CLI entrypoint."""
     CLI.setup()
     _configure_logger()
-    CLI.print_info("\nTapen version {}\n".format(VERSION), ansi.Mod.BOLD & ansi.Fg.LIGHT_BLUE)
+    CLI.print_info(f"\nTapen version {VERSION}\n", ansi.Mod.BOLD & ansi.Fg.LIGHT_BLUE)
     app_manager = TapenAppManager("tapen")
     app_manager.parse_and_handle_global()
     # Extensions
@@ -307,11 +333,12 @@ def main(argv: List[str]):
         # Run
         exec_manager = app_manager.create_execution_manager()
         exec_manager.run(parsed_commands)
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001
         CLI.print_error(e)
 
 
-def main_tpp(argv: List[str]):
+def main_tpp(argv: list[str]):
+    """Run the compatibility `tpp` CLI entrypoint."""
     CLI.setup()
     _configure_logger()
     app_manager = TapenAppManager("tapen")
@@ -324,15 +351,17 @@ def main_tpp(argv: List[str]):
         parsed_commands = app_manager.parse(argv)
         ext = TppExtension()
         ext.handle(parsed_commands[0])
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001
         CLI.print_error(e)
 
 
 def default_entrypoint():
+    """Invoke the default console-script entrypoint."""
     main(sys.argv[1:])
 
 
 def tpp_entrypoint():
+    """Invoke the `tpp` console-script entrypoint."""
     main_tpp(sys.argv[1:])
 
 

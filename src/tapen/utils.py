@@ -19,10 +19,12 @@ import yaml
 
 
 def yaml_file_to_dict(yaml_file: str) -> dict:
-    with open(yaml_file, "r") as f:
-        return yaml.load(f, Loader=yaml.FullLoader)
+    """Read a YAML file into a dictionary."""
+    with open(yaml_file) as f:
+        return yaml.safe_load(f)
 
 
 def dict_to_yaml_file(yaml_dict: dict, yaml_file: str):
+    """Write a dictionary to a YAML file."""
     with open(yaml_file, "w") as f:
         return yaml.dump(yaml_dict, f)

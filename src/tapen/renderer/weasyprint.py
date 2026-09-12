@@ -15,20 +15,20 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.#
 
-import logging
 from io import BytesIO
+import logging
 from pathlib import Path
-from typing import Optional
 
+from cli_rack.utils import ensure_dir
+from PIL import Image
 import poppler
 import weasyprint as wp
-from PIL import Image
-from cli_rack.utils import ensure_dir
 
 from tapen.common.domain import PrintJob
-from .common import Renderer, TemplateProcessor
+
 from .. import config
 from ..printer.common import TapeInfo
+from .common import Renderer, TemplateProcessor
 
 RESOURCES_DIR = Path(__file__).parent / "resources"
 
@@ -68,6 +68,8 @@ DEFAULT_RENDERER_DPI = 96
 
 
 class WeasyprintRenderer(Renderer):
+    """Renderer that converts HTML templates to printer bitmaps."""
+
     def __init__(self, template_processor: TemplateProcessor) -> None:
         super().__init__()
         self.template_processor = template_processor
@@ -77,7 +79,7 @@ class WeasyprintRenderer(Renderer):
         path = RESOURCES_DIR / name
         if path.exists():
             return str(path)
-        raise ValueError("Resource {} not found at {}".format(name, path))
+        raise ValueError(f"Resource {name} not found at {path}")
 
     def __generate_temp_file(self, file_name: str) -> Path:
         path = Path(config.app_dirs.user_cache_dir) / "debug"
@@ -86,31 +88,32 @@ class WeasyprintRenderer(Renderer):
 
     def __page_config_css(self, tape_params: TapeInfo, width_px: float | None = None) -> str:
         return PAGE_SIZE_CONFIG_TEMPLATE.format(
-            width="{}mm".format(tape_params.width_mm), height="9000px" if width_px is None else str(width_px) + "px"
+            width=f"{tape_params.width_mm}mm", height="9000px" if width_px is None else str(width_px) + "px"
         )
 
     def __page_set_baseline_font(self, tape_params: TapeInfo) -> str:
         printable_height = tape_params.width_mm - 2 * tape_params.padding_vertical_mm
         return BASELINE_FONT.format(
-            size="{}mm".format(printable_height),
-            line_height="{}mm".format(printable_height),
-            padding_top="{}mm".format(tape_params.padding_vertical_mm),
-            padding_bottom="{}mm".format(tape_params.padding_vertical_mm),
-            padding_left="{}px".format(0),
-            padding_right="{}px".format(0),
+            size=f"{printable_height}mm",
+            line_height=f"{printable_height}mm",
+            padding_top=f"{tape_params.padding_vertical_mm}mm",
+            padding_bottom=f"{tape_params.padding_vertical_mm}mm",
+            padding_left=f"{0}px",
+            padding_right=f"{0}px",
         )
 
-    def __find_body_width(self, page: wp.Page) -> Optional[float]:
+    def __find_body_width(self, page: wp.Page) -> float | None:
         try:
             body = page._page_box.all_children()[0].all_children()[0]
             return int(body.width + body.padding_left + body.padding_right)
-        except Exception:
+        except Exception:  # noqa: BLE001
             return None
 
     def __create_processing_context(self, print_job: PrintJob, tape_params: TapeInfo, is_preview=False):
-        return dict(params=print_job.params, param=print_job.params, tape=tape_params, is_preview=is_preview)
+        return {"params": print_job.params, "param": print_job.params, "tape": tape_params, "is_preview": is_preview}
 
     def render(self, print_job: PrintJob, tape_params: TapeInfo, is_preview=False, dpi=180):
+        """Render a print job to an in-memory PNG file."""
         processing_context = self.__create_processing_context(print_job, tape_params, is_preview)
         label_html = self.template_processor.process(print_job.template, processing_context)
 
@@ -149,18 +152,19 @@ class WeasyprintRenderer(Renderer):
         result_png.seek(0)
         self.job_num += 1
         if self.persist_rendered_image_as_file:
-            path = self.__generate_temp_file("rendered-label-{}.png".format(self.job_num))
+            path = self.__generate_temp_file(f"rendered-label-{self.job_num}.png")
             with open(path, "wb") as f:
-                LOGGER.debug("Persisting generated image at {}".format(path))
+                LOGGER.debug(f"Persisting generated image at {path}")
                 f.write(result_png.read())
         return result_png
 
     def render_bitmap(self, print_job: PrintJob, tape_params: TapeInfo, is_preview=False, dpi=180):
+        """Render a print job to a monochrome bitmap image."""
         png = self.render(print_job, tape_params, is_preview, dpi)
         bitmap = Image.open(png, "r", ("png",)).convert("1", dither=0)
         if self.persist_rendered_image_as_file:
-            path = self.__generate_temp_file("rendered-label-{}.bmp".format(self.job_num))
-            LOGGER.debug("Persisting rendered bitmap at {}".format(path))
+            path = self.__generate_temp_file(f"rendered-label-{self.job_num}.bmp")
+            LOGGER.debug(f"Persisting rendered bitmap at {path}")
             bitmap.save(path)
 
         return bitmap

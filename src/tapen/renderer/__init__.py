@@ -15,17 +15,16 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.#
 
-from typing import Optional
-
 from .common import Renderer, TemplateProcessor
 from .processor import JinjaTemplateProcessor
 from .weasyprint import WeasyprintRenderer
 
-__DEFAULT_RENDERER: Optional[Renderer] = None
-__DEFAULT_PROCESSOR: Optional[TemplateProcessor] = None
+__DEFAULT_RENDERER: Renderer | None = None
+__DEFAULT_PROCESSOR: TemplateProcessor | None = None
 
 
 def get_default_template_processor() -> TemplateProcessor:
+    """Return the process-wide default template processor."""
     global __DEFAULT_PROCESSOR
     if __DEFAULT_PROCESSOR is None:
         __DEFAULT_PROCESSOR = JinjaTemplateProcessor()
@@ -33,6 +32,7 @@ def get_default_template_processor() -> TemplateProcessor:
 
 
 def get_default_renderer() -> Renderer:
+    """Return the process-wide default renderer."""
     global __DEFAULT_RENDERER
     if __DEFAULT_RENDERER is None:
         __DEFAULT_RENDERER = WeasyprintRenderer(get_default_template_processor())

@@ -17,10 +17,12 @@
 
 import ctypes
 import enum
-from typing import NamedTuple, List, Dict
+from typing import NamedTuple
 
 
 class TapeInfo(NamedTuple):
+    """Static metadata for a supported tape size."""
+
     tape_size: str
     designated_size: int
     tape_id: int
@@ -29,7 +31,9 @@ class TapeInfo(NamedTuple):
     padding_vertical_mm: float
 
 
-class DevInfo(object):
+class DevInfo:
+    """Static metadata for a supported P-touch device."""
+
     def __init__(
         self,
         name: str,
@@ -54,6 +58,8 @@ class DevInfo(object):
 
 
 class PTStatusRaw(ctypes.Structure):
+    """Raw P-touch status response structure."""
+
     _fields_ = (
         ("printheadmark", ctypes.c_uint8),
         ("size", ctypes.c_uint8),
@@ -82,31 +88,40 @@ class PTStatusRaw(ctypes.Structure):
     )
 
 
-class PTStatus(object):
+class PTStatus:
+    """Parsed P-touch printer status."""
+
     def __init__(self, raw_status: PTStatusRaw) -> None:
         super().__init__()
         self.raw = raw_status
 
     @property
     def density(self) -> int:
+        """Return the reported print density."""
         return self.raw.density
 
     @property
     def tape_color(self):
+        """Return the reported tape color."""
         return TapeColor.get_by_code(int(self.raw.tape_color))
 
     @property
     def text_color(self) -> "TapeTextColor":
+        """Return the reported tape text color."""
         return TapeTextColor.get_by_code(int(self.raw.text_color))
 
     @property
     def tape_width(self) -> int:
+        """Return the reported tape width in millimeters."""
         return self.raw.media_width
 
 
 @enum.unique
 class BaseColorEnum(enum.Enum):
+    """Base enum for P-touch color codes."""
+
     def __new__(cls, *args, **kwargs):
+        """Create an enum value from a P-touch color code."""
         value = args[0]
         obj = object.__new__(cls)
         obj._value_ = value
@@ -119,13 +134,16 @@ class BaseColorEnum(enum.Enum):
 
     @classmethod
     def get_by_code(cls, code: int):
+        """Return an enum member by P-touch color code."""
         result = next(filter(lambda x: x[1].value == code, cls.__members__.items()), None)
         if result is not None:
             return result[1]
-        raise KeyError("Invalid value for enum {}: {}".format(cls.__name__, code))
+        raise KeyError(f"Invalid value for enum {cls.__name__}: {code}")
 
 
 class TapeTextColor(BaseColorEnum):
+    """Known P-touch tape text colors."""
+
     WHITE = 0x01, "White", "white"
     RED = 0x04, "Red", "red"
     BLUE = 0x05, "Blue", "blue"
@@ -139,10 +157,13 @@ class TapeTextColor(BaseColorEnum):
 
     @classmethod
     def get_by_code(cls, code: int) -> "TapeTextColor":
+        """Return a tape text color by P-touch code."""
         return super().get_by_code(code)  # type: ignore
 
 
 class TapeColor(BaseColorEnum):
+    """Known P-touch tape background colors."""
+
     WHITE = 0x01, "White", "white"
     OTHER = 0x02, "Other", "gray"
     TRANSPARENT = 0x03, "Transparent", "transparent"
@@ -168,10 +189,11 @@ class TapeColor(BaseColorEnum):
 
     @classmethod
     def get_by_code(cls, code: int) -> "TapeColor":
+        """Return a tape background color by P-touch code."""
         return super().get_by_code(code)  # type: ignore
 
 
-_TAPE_PARAMS_180DPI: List[TapeInfo] = [
+_TAPE_PARAMS_180DPI: list[TapeInfo] = [
     TapeInfo("3.5mm", 3, 263, 3.4, 24, 0),
     TapeInfo("6mm", 6, 257, 5.9, 42, 0.7),
     TapeInfo("9mm", 9, 258, 9.0, 64, 0.98),
@@ -180,6 +202,6 @@ _TAPE_PARAMS_180DPI: List[TapeInfo] = [
     TapeInfo("24mm", 24, 261, 240, 170, 2.96),
 ]
 
-TAPE_PARAMS: Dict[int, List[TapeInfo]] = {180: _TAPE_PARAMS_180DPI}
+TAPE_PARAMS: dict[int, list[TapeInfo]] = {180: _TAPE_PARAMS_180DPI}
 
 DEFAULT_DPI = 180
