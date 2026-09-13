@@ -49,7 +49,7 @@ PAGE_SIZE_CONFIG_TEMPLATE = """
 @page {{
     margin: 0;
     padding: 0;
-    size: {height} {width}; 
+    size: {page_width} {page_height};
 }}
 """
 
@@ -88,7 +88,8 @@ class WeasyprintRenderer(Renderer):
 
     def __page_config_css(self, tape_params: TapeInfo, width_px: float | None = None) -> str:
         return PAGE_SIZE_CONFIG_TEMPLATE.format(
-            width=f"{tape_params.width_mm}mm", height="9000px" if width_px is None else str(width_px) + "px"
+            page_width="9000px" if width_px is None else str(width_px) + "px",
+            page_height=f"{tape_params.width_mm}mm",
         )
 
     def __page_set_baseline_font(self, tape_params: TapeInfo) -> str:

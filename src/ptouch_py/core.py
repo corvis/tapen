@@ -109,6 +109,9 @@ class Printer:
     def print_image(self, image: Image, cut_tape=True):
         """Print a monochrome image and optionally cut the tape."""
         buffer_size = int(self.info.max_px_buffer / 8)
+        if image.height > self.info.max_px_buffer:
+            top = (image.height - self.info.max_px_buffer) // 2
+            image = image.crop((0, top, image.width, top + self.info.max_px_buffer))
         # Enable pack bits
         if self.info.packbits:
             self._pt_send(const.CMD_ENABLE_PACKBITS)
@@ -129,7 +132,7 @@ class Printer:
 
     def __rasterline_set_pixel(self, rasterline: list[int], pixel_offset: int) -> None:
         size = len(rasterline)
-        if pixel_offset > size * 8:
+        if pixel_offset < 0 or pixel_offset >= size * 8:
             return
         rasterline[(size - 1) - int(pixel_offset / 8)] |= 1 << (pixel_offset % 8)
 

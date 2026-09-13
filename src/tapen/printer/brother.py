@@ -161,7 +161,11 @@ class PTouchFactory(PrinterFactory):
         if cache_file is None or not cache_file.exists():
             return None
         with open(cache_file, "rb") as f:
-            return pickle.load(f)  # noqa: S301
+            tape_info = pickle.load(f)  # noqa: S301
+        if tape_info.width_mm > 30:
+            cache_file.unlink()
+            return None
+        return tape_info
 
     def discover_printers(self, configured_printers: list[dict] | None = None) -> list[TapenPrinter]:
         """Discover available P-touch printers."""

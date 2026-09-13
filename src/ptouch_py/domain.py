@@ -202,7 +202,7 @@ _TAPE_PARAMS_180DPI: list[TapeInfo] = [
     TapeInfo("9mm", 9, 258, 9.0, 64, 0.98),
     TapeInfo("12mm", 12, 259, 11.9, 84, 0.98),
     TapeInfo("18mm", 18, 260, 18.1, 128, 1.12),
-    TapeInfo("24mm", 24, 261, 240, 170, 2.96),
+    TapeInfo("24mm", 24, 261, 24, 170, 2.96),
 ]
 
 TAPE_PARAMS: dict[int, list[TapeInfo]] = {180: _TAPE_PARAMS_180DPI}
