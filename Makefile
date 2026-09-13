@@ -127,7 +127,7 @@ deps:
 	@( \
 		set -e; \
 		$(call activate_venv) \
-		$(POETRY) install --all-extras --no-root --with "$(POETRY_GROUPS)";; \
+		$(POETRY) install --all-extras --no-root --with "$(POETRY_GROUPS)"; \
 	)
 
 # Synchronize installed dependencies to match the lock file
