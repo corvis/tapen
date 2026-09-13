@@ -46,11 +46,13 @@ class DevInfo:
         packbits=False,
         is_plite=False,
         p700_init=False,
+        support_network=False,
     ) -> None:
         self.name = name
         self.vendor_id = vendor_id
         self.product_id = product_id
         self.max_px_buffer = max_px_buffer
+        self.support_network = support_network
         self.dpi = dpi
         self.unsupported_raster = unsupported_raster
         self.packbits = packbits

@@ -16,6 +16,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 
+from abc import ABC, abstractmethod
 import logging
 import time
 
@@ -29,50 +30,60 @@ from ptouch_py.registry import SUPPORTED_DEVICES
 LOGGER = logging.getLogger("ptouch_py.core")
 
 
-class Printer:
-    """Brother P-touch USB printer connection."""
+class Transport(ABC):
+    """Byte transport used by a P-touch printer connection."""
 
-    def __init__(self, usb_dev: usb.core.Device, dev_info: DevInfo) -> None:
+    @abstractmethod
+    def write(self, data: bytes) -> None:
+        """Write bytes to the printer."""
+
+    @abstractmethod
+    def read(self, size: int) -> bytes:
+        """Read up to size bytes from the printer."""
+
+    @abstractmethod
+    def close(self) -> None:
+        """Close the transport."""
+
+
+class Printer:
+    """Brother P-touch printer connection over a byte transport."""
+
+    def __init__(self, transport: Transport, dev_info: DevInfo) -> None:
         super().__init__()
-        assert usb_dev is not None and dev_info is not None, "USB Dev and Dev info MUST be set"
-        self.usb_dev = usb_dev
+        assert transport is not None and dev_info is not None, "Transport and Dev info MUST be set"
+        self._transport = transport
         self.info = dev_info
         self.max_read_attempts = 10
         self.__initialized = False
 
+    def close(self) -> None:
+        """Close the underlying transport."""
+        self._transport.close()
+
     @property
     def serial_number(self) -> str:
-        """Return the USB device serial number."""
-        return self.usb_dev.serial_number
+        """Return the printer serial number."""
+        raise NotImplementedError
 
     @property
     def vendor_name(self) -> str:
-        """Return the USB device manufacturer name."""
-        return self.usb_dev.manufacturer
+        """Return the printer manufacturer name."""
+        return "Brother"
 
     @property
     def product_name(self) -> str:
-        """Return the USB device product name."""
-        return self.usb_dev.product
+        """Return the printer product name."""
+        return self.info.name
 
     def _pt_send(self, data: bytes):
         if not self.__initialized and data != const.CMD_INIT:
             raise RuntimeError("Device must be initialized before use. Invoke Printer.init() method.")
 
-        msg_len = len(data)
-        assert self.usb_dev.write(0x02, data) == msg_len
+        self._transport.write(data)
 
     def init(self) -> None:
-        """Initialize the USB device for P-touch commands."""
-        if self.usb_dev.is_kernel_driver_active(0):
-            self.usb_dev.detach_kernel_driver(0)
-        self.usb_dev.set_configuration()
-        cfg = self.usb_dev.get_active_configuration()
-        intf = cfg[(0, 0)]
-        endpoint: usb.core.Endpoint = usb.util.find_descriptor(
-            intf, custom_match=lambda e: usb.util.endpoint_direction(e.bEndpointAddress) == usb.util.ENDPOINT_OUT
-        )
-        assert endpoint is not None and endpoint.bEndpointAddress == const.PTOUCH_ENDPOINT
+        """Initialize the printer for P-touch commands."""
         self._pt_send(const.CMD_INIT)
         self.__initialized = True
 
@@ -84,7 +95,7 @@ class Printer:
         time.sleep(0.5)
         while attempt < self.max_read_attempts:
             time.sleep(0.5)
-            status_bytes = self.usb_dev.read(const.PTOUCH_INPUT_ENDPOINT, const.PTOUCH_STATUS_REPLY_SIZE)
+            status_bytes = self._transport.read(const.PTOUCH_STATUS_REPLY_SIZE)
             if len(status_bytes) == const.PTOUCH_STATUS_REPLY_SIZE:
                 if status_bytes[0] == 0x80 and status_bytes[1] == 0x20:
                     return PTStatus(PTStatusRaw.from_buffer(status_bytes))
@@ -128,14 +139,13 @@ class Printer:
         self._pt_send(buffer)
 
     def __str__(self) -> str:
-        return (
-            f"{self.vendor_name} {self.product_name} (s/n: {self.serial_number}) "
-            f"[USB dev {self.usb_dev.address} / Bus {self.usb_dev.bus}]"
-        )
+        return f"{self.vendor_name} {self.product_name} (s/n: {self.serial_number})"
 
 
-def find_printers() -> list[Printer]:
+def find_usb_printers() -> list[Printer]:
     """Discover supported P-touch printers on USB."""
+    from ptouch_py.impl.usb import UsbPrinter
+
     result: list[Printer] = []
     devs: list[usb.core.Device] = usb.core.find(find_all=True)
     for dev in devs:
@@ -143,12 +153,26 @@ def find_printers() -> list[Printer]:
             filter(lambda x: x.vendor_id == dev.idVendor and x.product_id == dev.idProduct, SUPPORTED_DEVICES), None
         )
         if supported_dev is not None:
-            printer = Printer(dev, supported_dev)
+            printer = UsbPrinter(dev, supported_dev)
             result.append(printer)
     return result
 
 
-def get_first_printer() -> Printer | None:
+def get_first_usb_printer() -> Printer | None:
     """Return the first discovered P-touch printer, if any."""
-    printers = find_printers()
+    printers = find_usb_printers()
     return printers[0] if len(printers) > 0 else None
+
+
+def connect_network(host: str, port: int = 9100, timeout: float = 10.0) -> Printer:
+    """Connect to a Brother P-touch raw TCP/IP printer.
+
+    PT-P750W uses port 9100 by default and accepts the same raster stream as
+    the USB interface. The returned printer must be initialized before use.
+    """
+    from ptouch_py.impl.network import NetworkPrinter
+
+    dev_info = next((x for x in SUPPORTED_DEVICES if x.name == "PT-P750W"), None)
+    if dev_info is None:
+        raise RuntimeError("PT-P750W is not registered as a supported device")
+    return NetworkPrinter(host, dev_info, port, timeout)

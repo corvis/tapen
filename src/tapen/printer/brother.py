@@ -23,7 +23,7 @@ from cli_rack.utils import ensure_dir
 from PIL.Image import Image
 
 from ptouch_py.core import Printer as PTouch_Printer
-from ptouch_py.core import find_printers
+from ptouch_py.core import find_usb_printers
 from ptouch_py.domain import DEFAULT_DPI, TAPE_PARAMS, BaseColorEnum, PTStatus
 from ptouch_py.domain import TapeInfo as PTouch_TapeInfo
 from tapen import config
@@ -164,4 +164,4 @@ class PTouchFactory(PrinterFactory):
 
     def discover_printers(self) -> list[TapenPrinter]:
         """Discover available P-touch printers."""
-        return [PTouchPrinter(x) for x in find_printers()]
+        return [PTouchPrinter(x) for x in find_usb_printers()]

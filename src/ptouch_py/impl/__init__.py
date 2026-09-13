@@ -15,12 +15,3 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-
-from ptouch_py.domain import DevInfo
-
-SUPPORTED_DEVICES = [
-    DevInfo("PT-P700", 0x04F9, 0x2061, packbits=True, p700_init=True),
-    DevInfo("PT-P700 (PLite Mode)", 0x04F9, 0x2064, is_plite=True),
-    DevInfo("PT-P750W", 0x04F9, 0x2062, packbits=True, p700_init=True, support_network=True),
-    DevInfo("PT-P750W (PLite Mode)", 0x04F9, 0x2065, is_plite=True),
-]
