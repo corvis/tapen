@@ -312,6 +312,36 @@ class PrintersExtension(BaseCliExtension):
             CLI.print_info("  none")
 
 
+class StatusExtension(BaseCliExtension):
+    """Display the status of a configured or discovered printer."""
+
+    COMMAND_NAME = "status"
+    COMMAND_DESCRIPTION = "Show printer status"
+
+    @classmethod
+    def setup_parser(cls, parser: argparse.ArgumentParser):
+        """Configure printer status arguments."""
+        parser.add_argument(
+            "-p",
+            "--printer",
+            type=str,
+            default=None,
+            help='Printer name from config or "usb" for the first discovered USB printer',
+        )
+
+    def handle(self, args: argparse.Namespace):
+        """Display the selected printer status."""
+        self.init(args)
+        printer = self.get_printer(args.printer)
+        if printer is None:
+            CLI.fail("Printer is not connected", 1)
+        assert printer is not None
+        printer.init()
+        status = printer.get_status()
+        CLI.print_info(f"Printer: {printer}")
+        CLI.print_info(f"Tape: {status.tape_info}")
+
+
 class PrintExtension(BaseCliExtension):
     """CLI extension for rendering and printing labels."""
 
@@ -386,7 +416,7 @@ class PrintExtension(BaseCliExtension):
             if printer is not None:
                 CLI.print_info(f"Detected printer: {printer}")
                 printer.init()
-        tape_info = self.get_cached_tape_info()
+        tape_info = self.get_cached_tape_info(printer.id if printer is not None else None)
         if tape_info is None or args.force_tape_detection:
             if not args.skip_printing or args.force_tape_detection:
                 printer_status = none_throws(printer).get_status()
@@ -437,6 +467,7 @@ class TppExtension(GlobalArgsExtension):
 def _configure_logger():
     logging.getLogger("fontTools").setLevel(logging.ERROR)
     logging.getLogger("PIL").setLevel(logging.INFO)
+    logging.getLogger("weasyprint").setLevel(logging.WARNING)
 
 
 def main(argv: list[str]):
@@ -450,6 +481,7 @@ def main(argv: list[str]):
     app_manager.register_global_args_extension()
     app_manager.register_extension(ImportLibExtension)
     app_manager.register_extension(PrintersExtension)
+    app_manager.register_extension(StatusExtension)
     app_manager.register_extension(PrintExtension)
     app_manager.setup()
     try:
