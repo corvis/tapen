@@ -19,6 +19,12 @@
 CONF_NAME = "name"
 CONF_URL = "url"
 CONF_LIBRARIES = "libraries"
+CONF_PRINTERS = "printers"
+CONF_DEFAULT_PRINTER = "default_printer"
+CONF_TYPE = "type"
+CONF_ADDRESS = "address"
+CONF_VERBOSE_NAME = "verbose_name"
+CONF_DESCRIPTION = "description"
 
 C_DEFAULT = "default"
 C_REQUIRED = "required"

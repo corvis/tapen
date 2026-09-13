@@ -20,8 +20,10 @@ import abc
 import argparse
 import copy
 from enum import Enum
+import ipaddress
 import logging
 from pathlib import Path
+import re
 import sys
 from typing import Any
 
@@ -117,7 +119,6 @@ class BaseCliExtension(CliExtension, metaclass=abc.ABCMeta):
         libraries = config_obj.get(const.CONF_LIBRARIES, {})
         if STANDARD_LIB_NAME in libraries:
             del libraries[STANDARD_LIB_NAME]
-        print(config_obj)
         config.write_config_file(config_obj, Path(none_throws(self.__config_location)))
 
     @property
@@ -132,7 +133,7 @@ class BaseCliExtension(CliExtension, metaclass=abc.ABCMeta):
         self.__renderer = get_default_renderer()
         if args.debug:
             self.__renderer.persist_rendered_image_as_file = True
-        self.__printer_factory = get_print_factory()
+        self.__printer_factory = get_print_factory(self.config.get(const.CONF_PRINTERS, []))
         libraries: dict[str, Any] = self.config.get(const.CONF_LIBRARIES, {})
         self.__template_library = TemplateLibrary(libraries, always_reload_local_libs=args.debug)
 
@@ -153,10 +154,53 @@ class BaseCliExtension(CliExtension, metaclass=abc.ABCMeta):
             self.__renderer = get_default_renderer()
         return self.__renderer
 
-    def get_printer(self) -> TapenPrinter | None:
-        """Return the first discovered printer, if available."""
+    def get_printer(self, printer_name: str | None = None) -> TapenPrinter | None:
+        """Return the selected or default discovered printer, if available."""
         assert self.__printer_factory is not None, "Class is not initialized. Forgot self.init()?"
-        return self.__printer_factory.get_first_printer()
+        if printer_name == "usb":
+            usb_printers = self.__printer_factory.discover_usb_printers()
+            if not usb_printers:
+                CLI.fail("No USB printer is connected", 1)
+            return usb_printers[0]
+        configured = None
+        if printer_name is not None:
+            configured = next(
+                (
+                    printer
+                    for printer in self.config.get(const.CONF_PRINTERS, [])
+                    if printer[const.CONF_NAME] == printer_name
+                ),
+                None,
+            )
+            if configured is None:
+                CLI.fail(f'Printer "{printer_name}" is not registered in the configuration', 1)
+        printers = self.__printer_factory.discover_printers()
+        if printer_name is not None:
+            assert configured is not None
+            return next((printer for printer in printers if printer.id == configured[const.CONF_ADDRESS]), None)
+        default_name = self.config.get(const.CONF_DEFAULT_PRINTER)
+        if default_name is not None:
+            default = next(
+                (
+                    printer
+                    for printer in self.config.get(const.CONF_PRINTERS, [])
+                    if printer[const.CONF_NAME] == default_name
+                ),
+                None,
+            )
+            if default is not None:
+                return next((printer for printer in printers if printer.id == default[const.CONF_ADDRESS]), None)
+        return printers[0] if printers else None
+
+    def discover_printers(self) -> list[TapenPrinter]:
+        """Return printers currently discovered by the active factory."""
+        assert self.__printer_factory is not None, "Class is not initialized. Forgot self.init()?"
+        return self.__printer_factory.discover_printers()
+
+    def discover_usb_printers(self) -> list[TapenPrinter]:
+        """Return currently connected USB printers."""
+        assert self.__printer_factory is not None, "Class is not initialized. Forgot self.init()?"
+        return self.__printer_factory.discover_usb_printers()
 
     def get_cached_tape_info(self, printer_id: str | None = None) -> TapeInfo | None:
         """Return cached tape information for a printer."""
@@ -191,6 +235,81 @@ class ImportLibExtension(BaseCliExtension):
         self.config.get(const.CONF_LIBRARIES)[args.name] = args.url  # type:ignore
         self.persist_config()
         CLI.print_info(f"Library {args.name} has been added to config file")
+
+
+class PrintersExtension(BaseCliExtension):
+    """Manage printers stored in the Tapen configuration."""
+
+    COMMAND_NAME = "printers"
+    COMMAND_DESCRIPTION = "Manage configured printers"
+
+    @classmethod
+    def setup_parser(cls, parser: argparse.ArgumentParser):
+        """Configure printer management subcommands."""
+        commands = parser.add_subparsers(dest="printers_command", required=True)
+        add = commands.add_parser("add", help="Add a printer to the configuration")
+        add.add_argument("name", help="Configuration name")
+        add.add_argument("address", help="USB serial number or network IP address")
+        add.add_argument("--type", choices=("usb", "network"), default=None)
+        add.add_argument("--verbose-name", default=None)
+        add.add_argument("--description", default=None)
+        commands.add_parser("list", help="List configured and discovered printers")
+
+    def handle(self, args: argparse.Namespace):  # noqa: C901
+        """Execute a printer management subcommand."""
+        self.init(args)
+        printers = self.config.setdefault(const.CONF_PRINTERS, [])
+        if args.printers_command == "add":
+            if any(printer[const.CONF_NAME] == args.name for printer in printers):
+                raise ValueError(f'Printer name "{args.name}" is already configured')
+            printer_type = args.type
+            if printer_type is None:
+                try:
+                    ipaddress.ip_address(args.address)
+                    printer_type = "network"
+                except ValueError:
+                    printer_type = (
+                        "usb"
+                        if (
+                            args.address.startswith(("usb:", "/dev/"))
+                            or re.fullmatch(r"\d+[/ :]\d+", args.address) is not None
+                        )
+                        else "network"
+                    )
+            printer = {
+                const.CONF_NAME: args.name,
+                const.CONF_TYPE: printer_type,
+                const.CONF_ADDRESS: args.address,
+            }
+            if args.verbose_name is not None:
+                printer[const.CONF_VERBOSE_NAME] = args.verbose_name
+            if args.description is not None:
+                printer[const.CONF_DESCRIPTION] = args.description
+            printers.append(printer)
+            self.persist_config()
+            CLI.print_info(f'Printer "{args.name}" has been added to config file')
+            return
+
+        discovered_usb = {printer.id: printer for printer in self.discover_usb_printers()}
+        CLI.print_info("Configured printers:")
+        for printer in printers:
+            if printer[const.CONF_TYPE] == "usb":
+                state = "connected" if printer[const.CONF_ADDRESS] in discovered_usb else "not connected"
+            else:
+                state = "configured"
+            display_name = printer.get(const.CONF_VERBOSE_NAME, printer[const.CONF_NAME])
+            CLI.print_info(f"  {display_name} [{printer[const.CONF_TYPE]}] {printer[const.CONF_ADDRESS]} ({state})")
+            if printer.get(const.CONF_DESCRIPTION):
+                CLI.print_info(f"    {printer[const.CONF_DESCRIPTION]}")
+        CLI.print_info("Discovered USB printers:")
+        configured_addresses = {
+            printer[const.CONF_ADDRESS] for printer in printers if printer[const.CONF_TYPE] == "usb"
+        }
+        for address, discovered_printer in discovered_usb.items():
+            configured = "configured" if address in configured_addresses else "not configured"
+            CLI.print_info(f"  {discovered_printer} [{address}] ({configured})")
+        if not discovered_usb:
+            CLI.print_info("  none")
 
 
 class PrintExtension(BaseCliExtension):
@@ -234,6 +353,13 @@ class PrintExtension(BaseCliExtension):
             default=False,
             help="Renders data and skips printing on the real device",
         )
+        parser.add_argument(
+            "-p",
+            "--printer",
+            type=str,
+            default=None,
+            help='Printer name from config or "usb" for the first discovered USB printer',
+        )
         parser.add_argument("template", action="store", type=str, help="Template to use")
         parser.add_argument(
             "data", nargs="*", action="store", type=str, help="Data to be printed (will be passed into template)"
@@ -252,7 +378,7 @@ class PrintExtension(BaseCliExtension):
             template_name = self.DEFAULT_TEMPLATE_NAME
         template = self.template_library.load_template(template_name)
         # Load printer data
-        printer = self.get_printer()
+        printer = self.get_printer(args.printer)
         if printer is None and not args.skip_printing:
             CLI.print_error("Printer is not connected.")
             sys.exit(1)
@@ -323,6 +449,7 @@ def main(argv: list[str]):
     # Extensions
     app_manager.register_global_args_extension()
     app_manager.register_extension(ImportLibExtension)
+    app_manager.register_extension(PrintersExtension)
     app_manager.register_extension(PrintExtension)
     app_manager.setup()
     try:

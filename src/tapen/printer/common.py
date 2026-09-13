@@ -142,6 +142,10 @@ class PrinterFactory(abc.ABC):
         """Return discovered printers."""
         raise NotImplementedError
 
+    def discover_usb_printers(self) -> list[TapenPrinter]:
+        """Return currently connected USB printers."""
+        return self.discover_printers()
+
     def get_first_printer(self) -> TapenPrinter | None:
         """Return the first discovered printer, if any."""
         printers = self.discover_printers()

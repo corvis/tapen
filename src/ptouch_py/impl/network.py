@@ -80,6 +80,9 @@ class _WebStatusParser(HTMLParser):
         raw.model = ord("h")
         raw.status_type = 0 if status in {"READY", "WAITING"} else 2
         raw.phase_type = 0 if raw.status_type == 0 else 1
+        raw.media_type = 0x01
+        raw.tape_color = 0x02
+        raw.text_color = 0x08
         if media_width is not None:
             raw.media_width = media_width
         return PTStatus(raw)
@@ -99,8 +102,8 @@ class NetworkPrinter(Printer):
 
     @property
     def serial_number(self) -> str:
-        """Return a stable network printer identifier."""
-        return self.info.name + "@network"
+        """Return the network address as the printer identifier."""
+        return self._host
 
     @property
     def vendor_name(self) -> str:

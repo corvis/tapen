@@ -29,18 +29,23 @@ class DefaultPrinterFactory(PrinterFactory):
         """Return cached tape information for a Brother printer."""
         return self.__ptouch_fectory.get_cached_tape_info(printer_id)
 
-    def __init__(self) -> None:
+    def __init__(self, configured_printers: list[dict] | None = None) -> None:
         super().__init__()
         self.__ptouch_fectory = PTouchFactory()
+        self.__configured_printers = configured_printers or []
 
     def discover_printers(self) -> list[TapenPrinter]:
         """Discover available Brother P-touch printers."""
-        return self.__ptouch_fectory.discover_printers()
+        return self.__ptouch_fectory.discover_printers(self.__configured_printers)
+
+    def discover_usb_printers(self) -> list[TapenPrinter]:
+        """Discover currently connected USB Brother P-touch printers."""
+        return self.__ptouch_fectory.discover_usb_printers()
 
 
-def get_print_factory() -> PrinterFactory:
+def get_print_factory(configured_printers: list[dict] | None = None) -> PrinterFactory:
     """Return the process-wide default printer factory."""
     global __DEFAULT_PRINT_FACTORY
     if __DEFAULT_PRINT_FACTORY is None:
-        __DEFAULT_PRINT_FACTORY = DefaultPrinterFactory()
+        __DEFAULT_PRINT_FACTORY = DefaultPrinterFactory(configured_printers)
     return __DEFAULT_PRINT_FACTORY

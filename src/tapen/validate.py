@@ -26,6 +26,7 @@ from cli_rack_validation import crv
 from tapen import const
 
 RESERVED_IDS = ("tapen", "std")
+PRINTER_TYPES = ("usb", "network")
 
 COMBINE_OPERATOR = "&"
 VALID_LOCATOR_REGEX = re.compile(r"^[a-zA-Z_0-9\-]+:(.*)$")
@@ -76,6 +77,14 @@ def valid_locator(value):
         raise crv.Invalid(
             f'Invalid locator "{value}". Locator must include locator prefix separated by colon from the locator body'
         )
+    return value
+
+
+def valid_printer_type(value):
+    """Validate a configured printer transport type."""
+    value = crv.string_strict(value)
+    if value not in PRINTER_TYPES:
+        raise crv.Invalid(f"Invalid printer type {value!r}; expected usb or network")
     return value
 
 

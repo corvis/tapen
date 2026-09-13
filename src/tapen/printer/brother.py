@@ -23,7 +23,7 @@ from cli_rack.utils import ensure_dir
 from PIL.Image import Image
 
 from ptouch_py.core import Printer as PTouch_Printer
-from ptouch_py.core import find_usb_printers
+from ptouch_py.core import connect_network, find_usb_printers
 from ptouch_py.domain import DEFAULT_DPI, TAPE_PARAMS, BaseColorEnum, PTStatus
 from ptouch_py.domain import TapeInfo as PTouch_TapeInfo
 from tapen import config
@@ -108,9 +108,10 @@ class PTouchPrinterStatus(PrinterStatus):
 class PTouchPrinter(TapenPrinter):
     """Tapen printer wrapper for a Brother P-touch printer."""
 
-    def __init__(self, ptouch_printer: PTouch_Printer) -> None:
+    def __init__(self, ptouch_printer: PTouch_Printer, verbose_name: str | None = None) -> None:
         super().__init__()
         self._ptouch_printer = ptouch_printer
+        self._verbose_name = verbose_name
 
     def init(self):
         """Initialize the underlying P-touch printer."""
@@ -129,7 +130,7 @@ class PTouchPrinter(TapenPrinter):
     @property
     def verbose_name(self):
         """Return a human-readable printer name."""
-        return str(self._ptouch_printer)
+        return self._verbose_name or str(self._ptouch_printer)
 
     @property
     def id(self) -> str:
@@ -162,6 +163,16 @@ class PTouchFactory(PrinterFactory):
         with open(cache_file, "rb") as f:
             return pickle.load(f)  # noqa: S301
 
-    def discover_printers(self) -> list[TapenPrinter]:
+    def discover_printers(self, configured_printers: list[dict] | None = None) -> list[TapenPrinter]:
         """Discover available P-touch printers."""
+        printers = self.discover_usb_printers()
+        for configured in configured_printers or []:
+            if configured[config.const.CONF_TYPE] != "network":
+                continue
+            printer = connect_network(configured[config.const.CONF_ADDRESS])
+            printers.append(PTouchPrinter(printer, configured.get(config.const.CONF_VERBOSE_NAME)))
+        return printers
+
+    def discover_usb_printers(self) -> list[TapenPrinter]:
+        """Discover currently connected USB P-touch printers."""
         return [PTouchPrinter(x) for x in find_usb_printers()]

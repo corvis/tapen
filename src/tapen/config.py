@@ -41,7 +41,23 @@ LIBRARIES_SCHEMA = crv.Schema(
     )
 )
 
-CONFIG_SCHEMA = crv.Schema({crv.Required(const.CONF_LIBRARIES, default=[]): LIBRARIES_SCHEMA})
+PRINTER_SCHEMA = crv.Schema(
+    {
+        crv.Required(const.CONF_TYPE): validate.valid_printer_type,
+        crv.Required(const.CONF_ADDRESS): str,
+        crv.Required(const.CONF_NAME): str,
+        crv.Optional(const.CONF_VERBOSE_NAME): str,
+        crv.Optional(const.CONF_DESCRIPTION): str,
+    }
+)
+
+CONFIG_SCHEMA = crv.Schema(
+    {
+        crv.Required(const.CONF_LIBRARIES, default=[]): LIBRARIES_SCHEMA,
+        crv.Required(const.CONF_PRINTERS, default=[]): crv.ensure_list(PRINTER_SCHEMA),
+        crv.Optional(const.CONF_DEFAULT_PRINTER, default=None): crv.Any(str, type(None)),
+    }
+)
 
 DEFAULT_CONFIG: dict[str, Any] = {}
 DEFAULT_CONFIG_FILE_NAME = "conf.yaml"
@@ -81,6 +97,14 @@ def __normalize_config(conf: dict[str, Any]) -> dict[str, Any]:
 
 def write_config_file(config: dict[str, Any], p: Path):
     """Write configuration data to a YAML file."""
+    printers = config.get(const.CONF_PRINTERS, [])
+    printer_names = {printer[const.CONF_NAME] for printer in printers}
+    default_printer = config.get(const.CONF_DEFAULT_PRINTER)
+    if default_printer not in printer_names:
+        default_printer = None
+    if default_printer is None and printers:
+        default_printer = printers[0][const.CONF_NAME]
+    config[const.CONF_DEFAULT_PRINTER] = default_printer
     with open(p, "w") as f:
         yaml.dump(config, f)
 
