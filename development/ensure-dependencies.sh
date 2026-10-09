@@ -1,6 +1,6 @@
 #!/bin/bash
 
-DEPS=("python3.14" "poetry" "sed")
+DEPS=("python3.14" "uv" "sed")
 
 COLOR_RED='\033[0;31m'
 COLOR_YELLOW='\033[1;33m'
@@ -14,15 +14,11 @@ for d in "${DEPS[@]}"; do
     printf "   %-25s: installed\n" $d
   else
     printf "   %-25s: %b\n" $d "${COLOR_RED}NOT INSTALLED${COLOR_NC}"
-    if [ "$d" == "poetry" ]; then
+    if [ "$d" == "uv" ]; then
       echo ""
-      printf "${COLOR_YELLOW}Please install poetry on a system level. In order to install poetry you could run the following command:${COLOR_NC}"
+       printf "${COLOR_YELLOW}Please install uv on a system level. See https://docs.astral.sh/uv/getting-started/installation/:${COLOR_NC}"
       echo ""
-      echo "curl -sSL https://install.python-poetry.org | python3 -"
-      echo ""
-      echo "${COLOR_YELLOW}It is also recommended to install python packages ${COLOR_RED}keyring${COLOR_YELLOW} and ${COLOR_RED}artifacts-keyring${COLOR_NC}"
-      echo ""
-      echo "pip install keyring artifacts-keyring"
+       echo "curl -LsSf https://astral.sh/uv/install.sh | sh"
       echo ""
     fi
     exit 1

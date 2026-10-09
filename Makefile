@@ -1,9 +1,10 @@
 VIRTUAL_ENV_PATH=venv
-SKIP_VENV="${NO_VENV}"
 
 SHELL := /bin/bash
 PYTHON := python3.14
-POETRY := poetry
+UV := uv
+UV_PROJECT_ENVIRONMENT := $(CURDIR)/$(VIRTUAL_ENV_PATH)
+export UV_PROJECT_ENVIRONMENT
 
 PYPI_API_KEY :=
 PYPI_REPOSITORY_URL :=
@@ -11,8 +12,6 @@ ALPHA_VERSION :=
 SRC_ROOT := ./src
 ROOT_PACKAGE := tapen
 FORMAT_PATH := $(SRC_ROOT)
-
-POETRY_GROUPS := dev
 
 .DEFAULT_GOAL := pre_commit
 
@@ -26,34 +25,26 @@ else
     SED_COMMAND := sed
 endif
 
-define activate_venv
-  if [ -z $(SKIP_VENV) ]; then source $(VIRTUAL_ENV_PATH)/bin/activate; fi;
-endef
-
 pre_commit_hook:
 	@( \
-		$(call activate_venv) \
-		pre-commit run --all --hook-stage=commit; \
+		$(UV) run pre-commit run --all --hook-stage=commit; \
 	)
 
 verify-prerequisites:
 	@(development/ensure-dependencies.sh)
 
-setup: verify-prerequisites venv deps
+setup: verify-prerequisites deps
 	@( \
-		$(call activate_venv) \
-		pre-commit install; \
+		$(UV) run pre-commit install; \
 		echo "Pre-commit hooks installed"; \
-		./development/install-cli-commands.sh "$(VIRTUAL_ENV_PATH)" "$(SRC_ROOT)"; \
 		echo "DONE: setup"; \
 	)
 
 copyright:
 	@( \
-       $(call activate_venv) \
        echo "Applying copyright..."; \
        for p in $(FORMAT_PATH); do \
-       	 licenseheaders -t ./development/copyright.tmpl -E ".py" -cy -d $$p; \
+	       	 $(UV) run licenseheaders -t ./development/copyright.tmpl -E ".py" -cy -d $$p; \
        done; \
        echo "DONE: copyright"; \
     )
@@ -61,10 +52,9 @@ copyright:
 mypy:
 	@( \
        set -e; \
-       $(call activate_venv) \
        echo "Running MyPy checks..."; \
-       mypy --show-error-codes $(SRC_ROOT)/tapen; \
-       mypy --show-error-codes $(SRC_ROOT)/ptouch_py; \
+       $(UV) run mypy --show-error-codes $(SRC_ROOT)/tapen; \
+       $(UV) run mypy --show-error-codes $(SRC_ROOT)/ptouch_py; \
        \
        echo "DONE: MyPy"; \
     )
@@ -78,9 +68,8 @@ lint: check-format ruff-lint mypy
 build: copyright format lint clean
 	@( \
 	   set -e; \
-       $(call activate_venv) \
        echo "Building wheel package..."; \
-       poetry build; \
+       $(UV) build; \
        echo "DONE: wheel package"; \
     )
 
@@ -88,17 +77,15 @@ package:
 	@( \
 		echo "Building packages"; \
 		set -e; \
-		$(call activate_venv) \
-		poetry build; \
+		$(UV) build; \
 		echo "DONE: Building packages"; \
 	)
 
 single-binary:
 	@( \
 	   set -e; \
-       $(call activate_venv) \
        echo "Building single binary"; \
-       bash -c "pyinstaller tapen.spec"; \
+	       $(UV) run pyinstaller tapen.spec; \
        echo "DONE: wheel package"; \
     )
 
@@ -108,11 +95,10 @@ clean:
 publish:
 	@( \
        set -e; \
-       $(call activate_venv) \
        if [ ! -z $(PYPI_API_KEY) ]; then export TWINE_USERNAME="__token__"; export TWINE_PASSWORD="$(PYPI_API_KEY)"; fi; \
        if [ ! -z $(PYPI_REPOSITORY_URL) ]; then  export TWINE_REPOSITORY_URL="$(PYPI_REPOSITORY_URL)"; fi; \
        echo "Uploading to PyPi"; \
-       twine upload -r pypi dist/*; \
+	       $(UV) run twine upload -r pypi dist/*; \
        echo "DONE: Publish"; \
     )
 
@@ -123,104 +109,91 @@ set-version:
 		echo "Version updated: $(VERSION)"; \
 	)
 
-deps:
+deps: venv
 	@( \
 		set -e; \
-		$(call activate_venv) \
-		$(POETRY) install --all-extras --no-root --with "$(POETRY_GROUPS)"; \
+		$(UV) sync --all-groups; \
 	)
 
 # Synchronize installed dependencies to match the lock file
 .PHONY: deps-sync
 deps-sync:
 	@( \
-		$(call activate_venv) \
 		set -e; \
 		echo "Syncing dependencies..."; \
-		$(POETRY) sync --all-extras --no-root --with "$(POETRY_GROUPS)"; \
+		$(UV) sync --all-groups; \
 		echo "DONE: all dependencies are synchronized"; \
 	)
 
 deps-update:
 	@( \
-		$(call activate_venv) \
-		$(POETRY) update; \
+		$(UV) lock --upgrade; \
 	)
 
 deps-lock:
 	@( \
-		$(call activate_venv) \
-		$(POETRY) lock \
+		$(UV) lock; \
 	)
 
 deps-tree:
 	@( \
-		$(call activate_venv) \
-		$(POETRY) show --tree; \
+		$(UV) tree; \
 	)
 
 .PHONY: venv
 venv:
 	@( \
-		python3 -m venv $(VIRTUAL_ENV_PATH); \
-		source $(VIRTUAL_ENV_PATH)/bin/activate; \
+		test -x $(VIRTUAL_ENV_PATH)/bin/python || $(UV) venv --python $(PYTHON) $(VIRTUAL_ENV_PATH); \
 	)
 
 .PHONY: ruff-fix-pyupgrade
 ruff-fix-pyupgrade:
 	@( \
-	   $(call activate_venv) \
        echo "Applying pyupgrade..."; \
-       ruff check --select UP --fix; \
+       $(UV) run ruff check --select UP --fix; \
        echo "DONE: pyupgrade"; \
     )
 
 .PHONY: ruff-fix-pyupgrade-unsafe
 ruff-fix-pyupgrade-unsafe:
 	@( \
-	   $(call activate_venv) \
 	   echo "Applying pyupgrade..."; \
-	   ruff check --select UP --fix --unsafe-fixes; \
+	   $(UV) run ruff check --select UP --fix --unsafe-fixes; \
 	   echo "DONE: pyupgrade"; \
 	)
 
 ruff-format:
 	@( \
-	   $(call activate_venv) \
 	   echo "Running Ruff code formatter..."; \
-	   ruff format $(FORMAT_PATH); \
+	   $(UV) run ruff format $(FORMAT_PATH); \
 	   echo "DONE: Ruff"; \
 	)
 
 ruff-format-check:
 	@( \
-	   $(call activate_venv) \
 	   echo "Running Ruff format check..."; \
-	   ruff format --diff $(FORMAT_PATH) || exit 1; \
+	   $(UV) run ruff format --diff $(FORMAT_PATH) || exit 1; \
 	   echo "DONE: Ruff"; \
 	)
 
 ruff-import-sort:
 	@( \
-	   $(call activate_venv) \
 	   echo "Running Ruff import sort..."; \
-	   ruff check --select I --fix; \
+	   $(UV) run ruff check --select I --fix; \
 	   echo "DONE: Ruff"; \
 	)
 
 ruff-import-sort-check:
 	@( \
-	   $(call activate_venv) \
 	   echo "Running Ruff import sort..."; \
-	   ruff check --select I || exit 1; \
+	   $(UV) run ruff check --select I || exit 1; \
 	   echo "DONE: Ruff"; \
 	)
 
 ruff-lint:
 	@( \
-	   $(call activate_venv) \
-	   echo "Running Ruff link..."; \
-	   ruff check $(LINT_PATH) || exit 1; \
+	   echo "Running Ruff lint..."; \
+	   $(UV) run ruff check $(LINT_PATH) || exit 1; \
 	   echo "DONE: Ruff"; \
 	)
 
@@ -228,28 +201,24 @@ changelog:
 	@( \
 		echo "Generating changelog"; \
 		set -e; \
-		$(call activate_venv) \
-		cz changelog --incremental; \
+		$(UV) run cz changelog --incremental; \
 		echo "DONE: Changelog"; \
 	)
 
 print-changelog:
 	@( \
-		$(call activate_venv) \
-		cz changelog --dry-run --incremental; \
+		$(UV) run cz changelog --dry-run --incremental; \
 	)
 
 release:
 	@( \
 		echo "Preparing release"; \
 		set -e; \
-		$(call activate_venv) \
-		cz bump --changelog; \
+		$(UV) run cz bump --changelog; \
 		echo "DONE: Preparing release"; \
 	)
 
 print-version:
 	@( \
-		$(call activate_venv) \
-		cz version --project; \
+		$(UV) run cz version --project; \
 	)

@@ -37,12 +37,13 @@ repos:
         args: [ "format" ]
   - repo: local
     hooks:
-      - name: Poetry Check
-        id: check-poetry
+      - name: UV Lock Check
+        id: check-uv-lock
         language: system
         pass_filenames: false
         stages: [ pre-commit ]
-        entry: poetry@2 check
+        entry: uv
+        args: ["lock", "--check"]
   - repo: local
     hooks:
       - name: Apply copyright
